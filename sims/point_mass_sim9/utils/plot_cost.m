@@ -1,0 +1,15 @@
+close all;
+cost = @(x,y) (x + 2.5*ones(size(x))).^2 + y.^2 + 50*(atan(y./x)./y).^2;
+x = -5:0.01:-0.2;
+y = -5:0.01:-0.2;
+[X,Y] = meshgrid(x,y);
+costs = cost(X,Y);
+figure(1);
+hold on;
+contour(X,Y,costs,100);
+[M,I] = min(costs,[],'all','linear');
+plot(X(I),Y(I),'rx');
+% surf(X,Y,costs,'EdgeColor','none');
+xlabel('X Position');
+ylabel('Y Position');
+title('Cost Function');
