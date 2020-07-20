@@ -51,7 +51,7 @@ classdef point_2 < handle
            obj.ay = 0;
            obj.xc_mpc_r = map.corners(1,1);
            obj.yc_mpc_r = map.corners(1,2);
-           obj.xc_mpc_l = -1*obj.larg_num;
+           obj.xc_mpc_l = -1*obj.large_num;
            obj.yc_mpc_l = obj.yc_mpc_r;
            obj.xc_wp = map.corners(1,1);
            obj.yc_wp = map.corners(1,2);
