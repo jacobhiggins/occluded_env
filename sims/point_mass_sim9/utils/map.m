@@ -9,7 +9,7 @@ classdef map < handle
         sections % section orientations
         Ms_mpc % matrix for MPC calculation, for hallways + obstacles
         wypt_bases % waypoint bases for motion
-        corners % Defined corners of the map, orientation of how to avoid them
+        corners_r % Defined corners_r of the map, orientation of how to avoid them
         obss % obstacles of the map
         patches % Patches of uncertainty
         end_flag = true; % true when the sim should end
@@ -47,7 +47,7 @@ classdef map < handle
     methods %(Abstract)
         setParams(obj); % Set properties of the map
         get_wypt_base(obj); % Get all waypoint bases for a map
-        set_corners(obj);
+        set_corners_r(obj);
 %         termcond(obj,p) % returns true/false for map terminal condition
         function circ = get_circ(obj,p)
             theta = 0:0.1:2*pi;

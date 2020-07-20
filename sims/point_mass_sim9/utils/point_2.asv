@@ -49,8 +49,8 @@ classdef point_2 < handle
            obj.vy = 0;
            obj.ax = 0;
            obj.ay = 0;
-           obj.xc_mpc_r = map.corners_r(1,1);
-           obj.yc_mpc_r = map.corners_r(1,2);
+           obj.xc_mpc_r = map.corners_r_r(1,1);
+           obj.yc_mpc_r = map.corners_r_r(1,2);
            obj.xc_mpc_l = -1*obj.large_num;
            obj.yc_mpc_l = obj.yc_mpc_r;
            obj.xc_wp = map.corners_r(1,1);
@@ -78,7 +78,6 @@ classdef point_2 < handle
             obj.xc_mpc_r = map.corners_r(curr_cs,1);
             obj.yc_mpc_r = map.corners_r(curr_cs,2);
             obj.M_mpc = map.Ms_mpc{curr_cs};
-            obj.current_owall = map.walls_mpc(curr_cs);
        end
        function getcorner_WP(obj,map)
            persistent curr_c; % current corner index
@@ -105,7 +104,7 @@ classdef point_2 < handle
 %            M = Ms{curr_c};
 %            flip = corners_r(curr_c,3);
            obj.current_sec = curr_c;
-
+           obj.current_owall = map.walls_mpc(curr_c);
        end
        function get_wypt(obj,map)
            persistent dists; % Distances between waypoints
@@ -226,7 +225,7 @@ classdef point_2 < handle
            try
                x_last = obj.MPCinput.x(end,1); % Last (x,y) coordinate of projected motion
                y_last = obj.MPCinput.x(end,2);
-               [~,y_last] = c2u(x_last,y_last,xc_in,yc_in,obj.M_mpc);
+               [~,y_last] = c2u(x_last,y_last,xc_in,yc_in,M);
                if y_last < 0
                    m_inv = 0;
                end

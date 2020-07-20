@@ -93,7 +93,7 @@ classdef mapA < map
             end
         end
         function set_corners(obj)
-            obj.corners = [obj.hws(1),obj.hls(1)-obj.hws(2),1]; % xc, yc, avoid (+1 clockwise, -1 counterclockwise)
+            obj.corners_r = [obj.hws(1),obj.hls(1)-obj.hws(2),1]; % xc, yc, avoid (+1 clockwise, -1 counterclockwise)
 %             M2 = [0,1;-1,0];
 %             M3 = -1*eye(2);
             M4 = [0,1;1,0];
@@ -108,7 +108,7 @@ classdef mapA < map
                 y2 = obs.h/2; % y coordinate of upper left
                 [x1,y1] = u2c(x1,y1,obs.x,obs.y,M4);
                 [x2,y2] = u2c(x2,y2,obs.x,obs.y,M4);
-                obj.corners = [obj.corners;x1,y1,avoid1;x2,y2,avoid1];
+                obj.corners_r = [obj.corners_r;x1,y1,avoid1;x2,y2,avoid1];
                 obj.Ms_mpc = cat(2,obj.Ms_mpc,{[1,0;0,avoid1]});
                 obj.Ms_mpc = cat(2,obj.Ms_mpc,{[0,-1*avoid1;1,0]});
                 obj.walls_mpc = [obj.walls_mpc -30 -1*(obj.hws(2)-obs.w)];
@@ -117,12 +117,12 @@ classdef mapA < map
             end
             % Corner at end of 2nd hallway
             obj.walls_mpc = [obj.walls_mpc -30];
-            obj.corners = [obj.corners;obj.hls(2)-obj.hws(3),obj.hls(1),-1];
+            obj.corners_r = [obj.corners_r;obj.hls(2)-obj.hws(3),obj.hls(1),-1];
             obj.Ms_mpc = cat(2,obj.Ms_mpc,[0,1;1,0]);
             
             % Corner at end of last hallway
             obj.walls_mpc = [obj.walls_mpc -30];
-            obj.corners = [obj.corners;obj.hls(2)-obj.hws(3)/2,obj.hls(1)+obj.hls(3)-obj.hws(2),1];
+            obj.corners_r = [obj.corners_r;obj.hls(2)-obj.hws(3)/2,obj.hls(1)+obj.hls(3)-obj.hws(2),1];
             obj.Ms_mpc = cat(2,obj.Ms_mpc,eye(2));
         end
         function check_flag(obj,p)
