@@ -127,8 +127,8 @@ classdef mapA < map
             
             % Corner at end of last hallway
             obj.walls_mpc = [obj.walls_mpc -30];
-            obj.corners_r = [obj.corners_r;obj.hls(2),obj.hls(1)+obj.hls(3)-obj.hws(2),1];
-            obj.corners_l = [obj.corners_l;obj.hls(2)-obj.hws(3),obj.hls(1)+obj.hls(3)-obj.hws(2)];
+            obj.corners_r = [obj.corners_r;obj.hls(2)-obj.hws(3)/2,obj.hls(1)+obj.hls(3)-obj.hws(2),1];
+            
             obj.Ms_mpc = cat(2,obj.Ms_mpc,eye(2));
         end
         function check_flag(obj,p)

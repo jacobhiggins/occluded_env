@@ -76,9 +76,9 @@ extern "C"
 /** Number of differential derivative variables. */
 #define ACADO_NXD 0
 /** Number of references/measurements per node on the first N nodes. */
-#define ACADO_NY 6
+#define ACADO_NY 7
 /** Number of references/measurements on the last (N + 1)st node. */
-#define ACADO_NYN 3
+#define ACADO_NYN 4
 /** Total number of QP optimization variables. */
 #define ACADO_QP_NV 150
 /** Number of integration steps per shooting interval. */
@@ -116,23 +116,23 @@ real_t x[ 765 ];
  */
 real_t u[ 150 ];
 
-/** Column vector of size: 300
+/** Column vector of size: 350
  * 
- *  Matrix containing 50 reference/measurement vectors of size 6 for first 50 nodes.
+ *  Matrix containing 50 reference/measurement vectors of size 7 for first 50 nodes.
  */
-real_t y[ 300 ];
+real_t y[ 350 ];
 
-/** Column vector of size: 3
+/** Column vector of size: 4
  * 
  *  Reference/measurement vector for the 51. node.
  */
-real_t yN[ 3 ];
+real_t yN[ 4 ];
 
-/** Matrix of size: 300 x 6 (row major format) */
-real_t W[ 1800 ];
+/** Matrix of size: 350 x 7 (row major format) */
+real_t W[ 2450 ];
 
-/** Matrix of size: 3 x 3 (row major format) */
-real_t WN[ 9 ];
+/** Matrix of size: 4 x 4 (row major format) */
+real_t WN[ 16 ];
 
 /** Column vector of size: 15
  * 
@@ -197,11 +197,11 @@ real_t state[ 288 ];
 /** Column vector of size: 750 */
 real_t d[ 750 ];
 
-/** Column vector of size: 300 */
-real_t Dy[ 300 ];
+/** Column vector of size: 350 */
+real_t Dy[ 350 ];
 
-/** Column vector of size: 3 */
-real_t DyN[ 3 ];
+/** Column vector of size: 4 */
+real_t DyN[ 4 ];
 
 /** Matrix of size: 750 x 15 (row major format) */
 real_t evGx[ 11250 ];
@@ -212,26 +212,26 @@ real_t evGu[ 2250 ];
 /** Row vector of size: 18 */
 real_t objValueIn[ 18 ];
 
-/** Row vector of size: 6 */
-real_t objValueOut[ 6 ];
+/** Row vector of size: 7 */
+real_t objValueOut[ 7 ];
 
 /** Matrix of size: 750 x 15 (row major format) */
 real_t Q1[ 11250 ];
 
-/** Matrix of size: 750 x 6 (row major format) */
-real_t Q2[ 4500 ];
+/** Matrix of size: 750 x 7 (row major format) */
+real_t Q2[ 5250 ];
 
 /** Matrix of size: 150 x 3 (row major format) */
 real_t R1[ 450 ];
 
-/** Matrix of size: 150 x 6 (row major format) */
-real_t R2[ 900 ];
+/** Matrix of size: 150 x 7 (row major format) */
+real_t R2[ 1050 ];
 
 /** Matrix of size: 15 x 15 (row major format) */
 real_t QN1[ 225 ];
 
-/** Matrix of size: 15 x 3 (row major format) */
-real_t QN2[ 45 ];
+/** Matrix of size: 15 x 4 (row major format) */
+real_t QN2[ 60 ];
 
 /** Column vector of size: 58 */
 real_t conAuxVar[ 58 ];

@@ -58,8 +58,8 @@ int main()
 
   // Reference funciton
   Function h, hN;
-  h << x << y <<  phi_right << ax_dot << ay_dot << epsilon;
-  hN << x << y << phi_right;
+  h << x << y <<  phi_right << phi_left << ax_dot << ay_dot << epsilon;
+  hN << x << y << phi_right << phi_left;
 
   // Weigting Matrices
   BMatrix W = eye<bool>( h.getDim() );

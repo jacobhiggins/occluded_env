@@ -9,7 +9,8 @@ classdef map < handle
         sections % section orientations
         Ms_mpc % matrix for MPC calculation, for hallways + obstacles
         wypt_bases % waypoint bases for motion
-        corners_r % Defined corners_r of the map, orientation of how to avoid them
+        corners_r % Defined right corners of the map, orientation of how to avoid them
+        corners_l % Defined left corners of the map
         obss % obstacles of the map
         patches % Patches of uncertainty
         end_flag = true; % true when the sim should end
@@ -20,7 +21,8 @@ classdef map < handle
         plt_trail % graphic handle for trail
         plt_proj % graphic handle for projected motion
         plt_cmd % graphic handle for commanded inputs
-        plt_corner_mpc;
+        plt_corner_mpc_r; % graphic handle for right corners
+        plt_corner_mpc_l; % graphic handle for left corners
         plt_corner_wp;
         plts; % Running list of all plots
         plt_circ % graphic handle for waypoint circle
@@ -92,8 +94,10 @@ classdef map < handle
             end
             % Show MPC corner
             if obj.show_cornerMPC
-                obj.plt_corner_mpc = plot([p.x,p.xc_mpc_r],[p.y,p.yc_mpc_r],'c-',"Displayname",'MPC corner',"LineWidth",2);
-                obj.plts = [obj.plts obj.plt_corner_mpc];
+                obj.plt_corner_mpc_r = plot([p.x,p.xc_mpc_r],[p.y,p.yc_mpc_r],'c-',"Displayname",'Right MPC corner',"LineWidth",2);
+                obj.plts = [obj.plts obj.plt_corner_mpc_r];
+                obj.plt_corner_mpc_l = plot([0,0],[0,0],'b-',"Displayname",'Left MPC corner',"LineWidth",2);
+                obj.plts = [obj.plts obj.plt_corner_mpc_l];
             end
             % Show waypoint corner
             if obj.show_cornerWP
@@ -170,8 +174,15 @@ classdef map < handle
             end
             % Update MPC corner line
             if obj.show_cornerMPC
-               obj.plt_corner_mpc.XData = [p.x p.xc_mpc_r];
-               obj.plt_corner_mpc.YData = [p.y p.yc_mpc_r];
+               obj.plt_corner_mpc_r.XData = [p.x p.xc_mpc_r];
+               obj.plt_corner_mpc_r.YData = [p.y p.yc_mpc_r];
+               if p.lc_active
+                  obj.plt_corner_mpc_l.XData = [p.x p.xc_mpc_l];
+                  obj.plt_corner_mpc_l.YData = [p.y p.yc_mpc_l];
+               else
+                  obj.plt_corner_mpc_l.XData = [0 0];
+                  obj.plt_corner_mpc_l.YData = [0 0];
+               end
             end
             % Update WP corner line
             if obj.show_cornerWP

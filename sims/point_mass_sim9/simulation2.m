@@ -26,7 +26,8 @@ function simulation2(record)
         % Get waypoint for robot
         p.get_wypt(map);
         % Compute MPC commanded inputs
-        p.mpc_step();
+%         p.mpc_step();
+        p.mpc_step2(); % 2 corners
         % Using inputs, step in simulation
         p.motion_step();
         % Update plots
