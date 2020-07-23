@@ -10,4 +10,5 @@ clear all;
 warning('off','MATLAB:gui:array:InvalidArrayShape');
 
 %% Run sim
-simulation2(record);
+% simulation2(record);
+sim_UGV();

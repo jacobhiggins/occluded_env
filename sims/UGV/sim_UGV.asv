@@ -1,0 +1,11 @@
+function sim_UGV()
+    %% Define Robot
+    R = 0.1;
+    L = 0.5;
+    dd = DifferentialDrive(R,L);
+    
+    %% Define point mass
+    
+    %% Sim parameters
+    
+end
