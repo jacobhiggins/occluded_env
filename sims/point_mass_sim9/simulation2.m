@@ -1,4 +1,4 @@
-function simulation2(record)
+function simulation2()
     % Load map
     map = mapA();
 %     map = mapB();

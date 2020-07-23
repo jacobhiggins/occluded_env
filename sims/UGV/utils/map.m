@@ -9,10 +9,11 @@ classdef map < handle
         sections % section orientations
         Ms_mpc % matrix for MPC calculation, for hallways + obstacles
         wypt_bases % waypoint bases for motion
+        corners
         corners_r % Defined right corners of the map, orientation of how to avoid them
         corners_l % Defined left corners of the map
         obss % obstacles of the map
-        boxs % Used to find 
+        boxs % Used in is_visible function
         patches % Patches of uncertainty
         end_flag = true; % true when the sim should end
         % **** Main Plots ****
@@ -241,6 +242,20 @@ classdef map < handle
             post_data.ts = ts;
             post_data.LOSs = LOSs;
             assignin('base','post_data',post_data);
+        end
+        function isVis = isVisible(obj,corner,p)
+            xc = corner.x;
+            yc = corner.y;
+            xr = p.x;
+            yr = p.y;
+            isVis = true;
+            for i = 1:length(obj.boxs)
+               box = obj.boxs{i};
+               [xi,yi] = polyxpoly([xr xc],[yr yc],box.x,box.y);
+               if length(xi) > 1
+                  isVis = false; 
+               end
+            end
         end
     end
 end

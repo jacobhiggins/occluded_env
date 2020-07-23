@@ -1,12 +1,9 @@
-classdef point_2 < handle
+classdef point < handle
    properties
       x
       y
-      xc_mpc_r
-      yc_mpc_r
-      xc_mpc_l
-      yc_mpc_l
-      lc_active = false; % False when there is no left corner to consider
+      xc_mpc
+      yc_mpc
       xc_wp
       yc_wp
       wypt = struc('x',[],'y',[]);
@@ -35,10 +32,9 @@ classdef point_2 < handle
       current_owall = -100; % current outer wall distance from corner
       % MPC vars
       N = 50; % Control Horizon
-      Nu = 3; % Decision variables
+      Nu = 4; % Decision variables
       MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
       MPCoutput = struc('x',[],'u',[]);
-      large_num = 100000;
    end
    methods
        function initial_params(obj,map)
@@ -50,12 +46,10 @@ classdef point_2 < handle
            obj.vy = 0;
            obj.ax = 0;
            obj.ay = 0;
-           obj.xc_mpc_r = map.corners_r(1,1);
-           obj.yc_mpc_r = map.corners_r(1,2);
-           obj.xc_mpc_l = -1*obj.large_num;
-           obj.yc_mpc_l = obj.yc_mpc_r;
-           obj.xc_wp = map.corners_r(1,1);
-           obj.yc_wp = map.corners_r(1,2);
+           obj.xc_mpc = map.corners(1,1);
+           obj.yc_mpc = map.corners(1,2);
+           obj.xc_wp = map.corners(1,1);
+           obj.yc_wp = map.corners(1,2);
            obj.wypt.x = obj.x;
            obj.wypt.y = obj.y + obj.maxRad;
            obj.MPCinput.u = zeros(obj.N,obj.Nu);
@@ -67,32 +61,18 @@ classdef point_2 < handle
            obj.r = obj.maxRad;
        end
        function getcorner_MPC(obj,map)
-          persistent curr_rc;
-          persistent curr_lc;
-          if isempty(curr_rc)
-              curr_rc = 1;
-              curr_lc = 1;
-          end
-          M = map.Ms_mpc{curr_rc};
-          [~,dely_rc] = c2u(obj.x,obj.y,obj.xc_mpc_r,obj.yc_mpc_r,M);
-          [~,dely_lc] = c2u(obj.x,obj.y,obj.xc_mpc_l,obj.yc_mpc_l,M);
-          if dely_rc > 0
-              curr_rc = min(curr_rc + 1,size(map.corners_r,1));
-          end
-          corner_l.x = obj.xc_mpc_l;
-          corner_r.y 
-          if dely_lc > 0
-              curr_lc =  min(curr_lc + 1,size(map.corners_l,1));
-              obj.lc_active = false;
-          elseif map.isVisible()%dely_lc > -obj.maxRad
-              obj.lc_active = true;
-          end
-          obj.xc_mpc_r = map.corners_r(curr_rc,1);
-          obj.yc_mpc_r = map.corners_r(curr_rc,2);
-          obj.xc_mpc_l = map.corners_l(curr_lc,1);
-          obj.yc_mpc_l = map.corners_l(curr_lc,2);
-          obj.M_mpc = map.Ms_mpc{curr_rc};
-          obj.current_owall = map.walls_mpc(curr_rc);
+          persistent curr_cs;
+            if isempty(curr_cs)
+                curr_cs = 1;
+            end
+            M = map.Ms_mpc{curr_cs};
+            [~,dely] = c2u(obj.x,obj.y,obj.xc_mpc,obj.yc_mpc,M);
+            if dely > 0
+                curr_cs = min(curr_cs + 1,size(map.corners,1));
+            end
+            obj.xc_mpc = map.corners(curr_cs,1);
+            obj.yc_mpc = map.corners(curr_cs,2);
+            obj.M_mpc = map.Ms_mpc{curr_cs};
        end
        function getcorner_WP(obj,map)
            persistent curr_c; % current corner index
@@ -101,25 +81,25 @@ classdef point_2 < handle
                curr_c = 1;
                next_c = 2;
            end
-           curr_c = min(curr_c,size(map.corners_r,1));
-           next_c = min(next_c,size(map.corners_r,1));
-           xc1 = map.corners_r(curr_c,1);
-           yc1 = map.corners_r(curr_c,2);
-           xc2 = map.corners_r(next_c,1);
-           yc2 = map.corners_r(next_c,2);
-           avoid = map.corners_r(curr_c,3);
+           curr_c = min(curr_c,size(map.corners,1));
+           next_c = min(next_c,size(map.corners,1));
+           xc1 = map.corners(curr_c,1);
+           yc1 = map.corners(curr_c,2);
+           xc2 = map.corners(next_c,1);
+           yc2 = map.corners(next_c,2);
+           avoid = map.corners(curr_c,3);
            phi1 = atan2(yc1-obj.y,xc1-obj.x);
            phi2 = atan2(yc2-obj.y,xc2-obj.x);
            if sign(phi2 - phi1) == avoid
                curr_c = curr_c + 1;
                next_c = next_c + 1;
            end
-           obj.xc_wp = map.corners_r(curr_c,1);
-           obj.yc_wp = map.corners_r(curr_c,2);
+           obj.xc_wp = map.corners(curr_c,1);
+           obj.yc_wp = map.corners(curr_c,2);
 %            M = Ms{curr_c};
-%            flip = corners_r(curr_c,3);
+%            flip = corners(curr_c,3);
            obj.current_sec = curr_c;
-
+           obj.current_owall = map.walls_mpc(curr_c);
        end
        function get_wypt(obj,map)
            persistent dists; % Distances between waypoints
@@ -211,8 +191,8 @@ classdef point_2 < handle
            end
            xr_in = obj.x;
            yr_in = obj.y;
-           xc_in = obj.xc_mpc_r;
-           yc_in = obj.yc_mpc_r;
+           xc_in = obj.xc_mpc;
+           yc_in = obj.yc_mpc;
            xg_in = obj.wypt.x;
            yg_in = obj.wypt.y;
            vx_in = obj.vx;
@@ -240,7 +220,7 @@ classdef point_2 < handle
            try
                x_last = obj.MPCinput.x(end,1); % Last (x,y) coordinate of projected motion
                y_last = obj.MPCinput.x(end,2);
-               [~,y_last] = c2u(x_last,y_last,xc_in,yc_in,obj.M_mpc);
+               [~,y_last] = c2u(x_last,y_last,xc_in,yc_in,M);
                if y_last < 0
                    m_inv = 0;
                end
@@ -296,117 +276,6 @@ classdef point_2 < handle
            
            obj.proj_mot.x = proj_mot(:,1);
            obj.proj_mot.y = proj_mot(:,2);
-       end
-       function mpc_step2(obj)
-           % Use both left and right corners instead of just the right
-           left_bound = obj.current_owall;
-           right_bound = 0;
-           if obj.current_sec==3
-               right_bound = 15;
-           end
-           xr_in = obj.x;
-           yr_in = obj.y;
-           xc_r_in = obj.xc_mpc_r;
-           yc_r_in = obj.yc_mpc_r;
-           xc_l_in = obj.xc_mpc_l;
-           yc_l_in = obj.yc_mpc_l;
-           xg_in = obj.wypt.x;
-           yg_in = obj.wypt.y;
-           vx_in = obj.vx;
-           vy_in = obj.vy;
-           ax_in = obj.ax;
-           ay_in = obj.ay;
-           dt = obj.dt;
-           
-           [xr,yr] = c2u(xr_in,yr_in,xc_r_in,yc_r_in,obj.M_mpc);
-           [xg,yg] = c2u(xg_in,yg_in,xc_r_in,yc_r_in,obj.M_mpc);
-           [vx,vy] = c2u(vx_in,vy_in,0,0,obj.M_mpc);
-           [ax,ay] = c2u(ax_in,ay_in,0,0,obj.M_mpc);
-           [xc_r,yc_r] = c2u(xc_r_in,yc_r_in,xc_r_in,yc_r_in,obj.M_mpc);
-           [xc_l,yc_l] = c2u(xc_l_in,yc_l_in,xc_r_in,yc_r_in,obj.M_mpc);
-           
-           % Visibility Objective
-           m_r = (yc_r - yr)/(xc_r - xr);
-           m_l = (yc_l - yr)/(xc_l - xr);
-           phi_r = atan(m_r);
-           phi_l = atan(m_l);
-           phi_r_y = phi_r/yr;
-           phi_l_y = phi_l/yr;
-           
-           % Position Constraints
-           m_r_inv = 1/m_r;
-           m_l_inv = 1/m_l;
-           
-           if obj.lc_active
-              perc_l_weight = 5; 
-           else
-              perc_l_weight = 5;
-              xc_l = -50;
-              yc_l = 0;
-           end
-           
-           % If projected motion doesn't reach corner, don't set slope
-           % constraint
-           try
-               x_last = obj.MPCinput.x(end,1); % Last (x,y) coordinate of projected motion
-               y_last = obj.MPCinput.x(end,2);
-               [~,y_last] = c2u(x_last,y_last,xc_r_in,yc_r_in,obj.M_mpc);
-               if y_last < 0
-                   m_inv = 0;
-               end
-           catch
-           end
-           
-           var_r = phi_r_y;
-           var_l = phi_l_y;
-           var_des = 0;
-           
-           obj.MPCinput.x0 = [xr,yr,vx,vy,ax,ay,var_r,var_l,xc_l,yc_l,left_bound,right_bound,m_l_inv,m_r_inv,0];
-           
-           obj.MPCinput.x = [xr*ones((obj.N+1),1) ...
-               yr*ones((obj.N+1),1) ...
-               vx*ones(obj.N+1,1) ...
-               vy*ones(obj.N+1,1) ...
-               ax*ones(obj.N+1,1) ...
-               ay*ones(obj.N+1,1) ...
-               var_r*ones((obj.N+1),1) ...
-               var_l*ones((obj.N+1),1) ...
-               xc_l*ones((obj.N+1),1) ...
-               yc_l*ones((obj.N+1),1) ...
-               left_bound*ones(obj.N+1,1) ...
-               right_bound*ones(obj.N+1,1) ...
-               m_l_inv*ones(obj.N+1,1) ...
-               m_r_inv*ones(obj.N+1,1) ...
-               0*ones(obj.N+1,1)];
-           
-           obj.MPCinput.y = [xg*ones(obj.N,1), yg*ones(obj.N,1), var_r*ones(obj.N,1), var_l*ones(obj.N,1), 0*ones(obj.N,1),0*ones(obj.N,1),0*ones(obj.N,1)];
-           obj.MPCinput.yN = [xg yg var_des var_des];
-           
-           % x, y, perception right, perception left, ax_dot, ay_dot, epsilon
-           A = diag([50 500 5 perc_l_weight 250 250 50000000]);
-           
-%            if obj.current_sec==3
-%                A(3,3) = 0.000000000001;
-%            end
-           
-           obj.MPCinput.W = repmat(A,obj.N,1);
-           obj.MPCinput.WN = diag([A(1,1) A(2,2) A(3,3) A(4,4)]);
-           
-           obj.MPCoutput = acado_solver7( obj.MPCinput );
-           as = obj.MPCoutput.u(1,:);
-           ax_dot = as(1);
-           ay_dot = as(2);
-           obj.ax = ax + ax_dot*dt;
-           obj.ay = ay + ay_dot*dt;
-           [ax,ay] = c2u(obj.ax,obj.ay,0,0,inv(obj.M_mpc));
-           obj.cmd_input.x = ax;
-           obj.cmd_input.y = ay;
-           
-           proj_mot = (inv(obj.M_mpc)*obj.MPCoutput.x(:,1:2)' + [xc_r_in*ones(obj.N+1,1) yc_r_in*ones(obj.N+1,1)]')';
-           
-           obj.proj_mot.x = proj_mot(:,1);
-           obj.proj_mot.y = proj_mot(:,2);
-           
        end
        function motion_step(obj)
            instate = [obj.x obj.y obj.vx obj.vy obj.cmd_input.x obj.cmd_input.y]';

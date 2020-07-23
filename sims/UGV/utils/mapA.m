@@ -106,12 +106,14 @@ classdef mapA < map
                 o.set_wypts(obj.hws(sec));
                 o.set_map_points(obj);
                 %        o.set_avoid(hws(sec));
-                box.x = [obs.xs_map(1),obs.xs_map(2),obs.xs_map(2),obs.xs_map(1),obs.xs_map(1)];
-                box.y = [obs.ys_map(1),obs.ys_map(1),obs.ys_map(2),obs.ys_map(2),obs.ys_map(1)]
+                box.x = [o.xs_map(1),o.xs_map(2),o.xs_map(2),o.xs_map(1),o.xs_map(1)];
+                box.y = [o.ys_map(1),o.ys_map(1),o.ys_map(2),o.ys_map(2),o.ys_map(1)];
+                obj.boxs = cat(2,obj.boxs,box);
                 obj.obss{i} = o;
             end
         end
         function set_corners(obj)
+            
             obj.corners_r = [obj.hws(1),obj.hls(1)-obj.hws(2),1]; % xc, yc, avoid (+1 clockwise, -1 counterclockwise)
             obj.corners_l = [0,obj.hls(1)-obj.hws(2)]; % xc, yc, rc # (this is associated with first corner
 %             M2 = [0,1;-1,0];
