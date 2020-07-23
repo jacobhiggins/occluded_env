@@ -3,7 +3,7 @@ function simulation2(record)
     map = mapA();
 %     map = mapB();
     map.setParams();
-    map.show_cornerWP = false;
+    map.show_co
     
     % Initialize point
 %     p = point();

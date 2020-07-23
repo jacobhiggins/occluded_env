@@ -79,7 +79,7 @@ int main()
   ocp.subjectTo( -20 <= vy <= 20 );
   ocp.subjectTo( left_bound - x - epsilon <= 0 );
   ocp.subjectTo( x - epsilon - m_right*y - right_bound <= 0);
-  ocp.subjectTo( m_left*(y-yc_left) - (x-xc_left) - epsilon <= 0 );
+  // ocp.subjectTo( m_left*(y-yc_left) - (x-xc_left) - epsilon <= 0 );
   ocp.subjectTo( 0 <= epsilon);
   // Now that the MPC is setup, export the code
   OCPexport mpc( ocp );

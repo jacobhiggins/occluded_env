@@ -20,15 +20,27 @@ classdef mapA < map
            obj.sections{2} = [0,1;1,0];
            obj.sections{3} = eye(2);
            % Set x,y locations of wall
+           
            wall1.x = [obj.hws(1),obj.hls(2)-obj.hws(3),obj.hls(2)-obj.hws(3),obj.hws(1)];
            wall1.y = [0,0,obj.hls(1)-obj.hws(2),obj.hls(1)-obj.hws(2)];
            obj.walls{1} = wall1;
+           box1.x = [obj.hws(1),obj.hls(2)-obj.hws(3),obj.hls(2)-obj.hws(3),obj.hws(1),obj.hws(1)];
+           box1.y = [0,0,obj.hls(1)-obj.hws(2),obj.hls(1)-obj.hws(2),0];
+           obj.boxs{1} = box1;
+           
            wall2.x = [-obj.hws(1),obj.hls(2)-obj.hws(3),obj.hls(2)-obj.hws(3),-obj.hws(1)];
            wall2.y = [obj.hls(1),obj.hls(1),obj.hls(1)+obj.hls(3)-obj.hws(2),obj.hls(1)+obj.hls(3)-obj.hws(2)];
            obj.walls{2} = wall2;
+           box2.x = [-obj.hws(1),obj.hls(2)-obj.hws(3),obj.hls(2)-obj.hws(3),-obj.hws(1),-obj.hws(1)];
+           box2.y = [obj.hls(1),obj.hls(1),obj.hls(1)+obj.hls(3)-obj.hws(2),obj.hls(1)+obj.hls(3)-obj.hws(2),obj.hls(1)];
+           obj.boxs{2} = box2;
+           
            wall3.x = [-obj.hws(1),0,0,-obj.hws(1)];
            wall3.y = wall1.y;
            obj.walls{3} = wall3;
+           box3.x = [-obj.hws(1),0,0,-obj.hws(1),-obj.hws(1)];
+           box3.y = [wall1.y wall1.y(end)];
+           obj.boxs{3} = box3;
            % Set obstacles in map
            obj.set_obs();
            % Set waypoint bases
@@ -68,8 +80,9 @@ classdef mapA < map
             wypt_bases = obj.wypt_bases;
         end
         function set_obs(obj)
-            obs_secs = [];
+%             obs_secs = [];
 %             obs_secs = [2,2]; % Define section for obstacles
+            obs_secs = [2];
             obs_ls = [30,30]; % Define lengths of obstacles
             obs_ws = [15,15]; % Define widths of obstacles
             %     fracws = [1];
@@ -93,10 +106,14 @@ classdef mapA < map
                 o.set_wypts(obj.hws(sec));
                 o.set_map_points(obj);
                 %        o.set_avoid(hws(sec));
+                box.x = [o.xs_map(1),o.xs_map(2),o.xs_map(2),o.xs_map(1),o.xs_map(1)];
+                box.y = [o.ys_map(1),o.ys_map(1),o.ys_map(2),o.ys_map(2),o.ys_map(1)];
+                obj.boxs = cat(2,obj.boxs,box);
                 obj.obss{i} = o;
             end
         end
         function set_corners(obj)
+            
             obj.corners_r = [obj.hws(1),obj.hls(1)-obj.hws(2),1]; % xc, yc, avoid (+1 clockwise, -1 counterclockwise)
             obj.corners_l = [0,obj.hls(1)-obj.hws(2)]; % xc, yc, rc # (this is associated with first corner
 %             M2 = [0,1;-1,0];
@@ -113,7 +130,11 @@ classdef mapA < map
                 y2 = obs.h/2; % y coordinate of upper left
                 [x1,y1] = u2c(x1,y1,obs.x,obs.y,M4);
                 [x2,y2] = u2c(x2,y2,obs.x,obs.y,M4);
-                obj.corners_r = [obj.corners_r;x1,y1,avoid1;x2,y2,avoid1];
+                if avoid1 < 0
+                    obj.corners_l = [obj.corners_l;x1,y1;x2,y2];
+                else
+                    obj.corners_r = [obj.corners_r;x1,y1,avoid1;x2,y2,avoid1];
+                end
                 obj.Ms_mpc = cat(2,obj.Ms_mpc,{[1,0;0,avoid1]});
                 obj.Ms_mpc = cat(2,obj.Ms_mpc,{[0,-1*avoid1;1,0]});
                 obj.walls_mpc = [obj.walls_mpc -30 -1*(obj.hws(2)-obs.w)];

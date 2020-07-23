@@ -35,7 +35,7 @@ classdef point_2 < handle
       current_owall = -100; % current outer wall distance from corner
       % MPC vars
       N = 50; % Control Horizon
-      Nu = 4; % Decision variables
+      Nu = 3; % Decision variables
       MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
       MPCoutput = struc('x',[],'u',[]);
       large_num = 100000;
@@ -79,10 +79,12 @@ classdef point_2 < handle
           if dely_rc > 0
               curr_rc = min(curr_rc + 1,size(map.corners_r,1));
           end
+          corner_l.x = obj.xc_mpc_l;
+          corner_r.y 
           if dely_lc > 0
               curr_lc =  min(curr_lc + 1,size(map.corners_l,1));
               obj.lc_active = false;
-          elseif dely_lc > -obj.maxRad
+          elseif map.isVisible()%dely_lc > -obj.maxRad
               obj.lc_active = true;
           end
           obj.xc_mpc_r = map.corners_r(curr_rc,1);
@@ -335,6 +337,14 @@ classdef point_2 < handle
            m_r_inv = 1/m_r;
            m_l_inv = 1/m_l;
            
+           if obj.lc_active
+              perc_l_weight = 5; 
+           else
+              perc_l_weight = 5;
+              xc_l = -50;
+              yc_l = 0;
+           end
+           
            % If projected motion doesn't reach corner, don't set slope
            % constraint
            try
@@ -351,7 +361,7 @@ classdef point_2 < handle
            var_l = phi_l_y;
            var_des = 0;
            
-           obj.MPCinput.x0 = [xr,yr,vx,vy,ax,ay,var_r,var_l,xc_l,yc_l,left_bound,right_bound,m_l_inv,m_r_inv,0,0];
+           obj.MPCinput.x0 = [xr,yr,vx,vy,ax,ay,var_r,var_l,xc_l,yc_l,left_bound,right_bound,m_l_inv,m_r_inv,0];
            
            obj.MPCinput.x = [xr*ones((obj.N+1),1) ...
                yr*ones((obj.N+1),1) ...
@@ -361,24 +371,41 @@ classdef point_2 < handle
                ay*ones(obj.N+1,1) ...
                var_r*ones((obj.N+1),1) ...
                var_l*ones((obj.N+1),1) ...
-               safe*ones((obj.N+1),1) ...
+               xc_l*ones((obj.N+1),1) ...
+               yc_l*ones((obj.N+1),1) ...
                left_bound*ones(obj.N+1,1) ...
                right_bound*ones(obj.N+1,1) ...
-               delta_x*ones(obj.N+1,1) ...
-               m_inv*ones(obj.N+1,1)];
+               m_l_inv*ones(obj.N+1,1) ...
+               m_r_inv*ones(obj.N+1,1) ...
+               0*ones(obj.N+1,1)];
            
-           obj.MPCinput.y = [xg*ones(obj.N,1), yg*ones(obj.N,1), var_des*ones(obj.N,1),0*ones(obj.N,1),0*ones(obj.N,1),0*ones(obj.N,1),0*ones(obj.N,1),0*ones(obj.N,1)];
-           obj.MPCinput.yN = [xg yg var_des 0];
+           obj.MPCinput.y = [xg*ones(obj.N,1), yg*ones(obj.N,1), var_r*ones(obj.N,1), var_l*ones(obj.N,1), 0*ones(obj.N,1),0*ones(obj.N,1),0*ones(obj.N,1)];
+           obj.MPCinput.yN = [xg yg var_des var_des];
            
-           % x, y, perception, safety, ax_dot, ay_dot, epsilon_leftwall, epsilon_safety
-           A = diag([500 500 50000000 0.001 250 250 50000000 0.001]);
+           % x, y, perception right, perception left, ax_dot, ay_dot, epsilon
+           A = diag([50 500 5 perc_l_weight 250 250 50000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
 %            end
            
            obj.MPCinput.W = repmat(A,obj.N,1);
-           obj.MPCinput.WN = 1*diag([A(1,1) A(2,2) A(3,3) A(4,4)]);
+           obj.MPCinput.WN = diag([A(1,1) A(2,2) A(3,3) A(4,4)]);
+           
+           obj.MPCoutput = acado_solver7( obj.MPCinput );
+           as = obj.MPCoutput.u(1,:);
+           ax_dot = as(1);
+           ay_dot = as(2);
+           obj.ax = ax + ax_dot*dt;
+           obj.ay = ay + ay_dot*dt;
+           [ax,ay] = c2u(obj.ax,obj.ay,0,0,inv(obj.M_mpc));
+           obj.cmd_input.x = ax;
+           obj.cmd_input.y = ay;
+           
+           proj_mot = (inv(obj.M_mpc)*obj.MPCoutput.x(:,1:2)' + [xc_r_in*ones(obj.N+1,1) yc_r_in*ones(obj.N+1,1)]')';
+           
+           obj.proj_mot.x = proj_mot(:,1);
+           obj.proj_mot.y = proj_mot(:,2);
            
        end
        function motion_step(obj)

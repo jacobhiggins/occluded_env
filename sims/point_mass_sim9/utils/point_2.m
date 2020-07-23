@@ -79,10 +79,12 @@ classdef point_2 < handle
           if dely_rc > 0
               curr_rc = min(curr_rc + 1,size(map.corners_r,1));
           end
-          if dely_lc > 0
+          corner_l.x = obj.xc_mpc_l;
+          corner_l.y = obj.yc_mpc_l;
+          if dely_lc>0 && map.isVisible(corner_l,obj)
               curr_lc =  min(curr_lc + 1,size(map.corners_l,1));
               obj.lc_active = false;
-          elseif dely_lc > -obj.maxRad
+          elseif map.isVisible(corner_l,obj)%dely_lc > -obj.maxRad
               obj.lc_active = true;
           end
           obj.xc_mpc_r = map.corners_r(curr_rc,1);
@@ -335,6 +337,14 @@ classdef point_2 < handle
            m_r_inv = 1/m_r;
            m_l_inv = 1/m_l;
            
+           if obj.lc_active
+              perc_l_weight = 5; 
+           else
+              perc_l_weight = 5;
+              xc_l = -50;
+              yc_l = 0;
+           end
+           
            % If projected motion doesn't reach corner, don't set slope
            % constraint
            try
@@ -372,14 +382,8 @@ classdef point_2 < handle
            obj.MPCinput.y = [xg*ones(obj.N,1), yg*ones(obj.N,1), var_r*ones(obj.N,1), var_l*ones(obj.N,1), 0*ones(obj.N,1),0*ones(obj.N,1),0*ones(obj.N,1)];
            obj.MPCinput.yN = [xg yg var_des var_des];
            
-           % x, y, perception right, perception left, ax_dot, ay_dot, epsilon_leftwall, epsilon_safety
-           if obj.lc_active
-              perc_l_weight = 5; 
-           else
-              perc_l_weight = 5;
-           end
-           
-           A = diag([500 500 5 perc_l_weight 250 250 50000000]);
+           % x, y, perception right, perception left, ax_dot, ay_dot, epsilon
+           A = diag([50 500 5 perc_l_weight 250 250 50000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
