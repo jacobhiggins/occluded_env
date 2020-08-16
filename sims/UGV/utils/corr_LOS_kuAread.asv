@@ -1,0 +1,11 @@
+close all;
+load("../robot.mat");
+LOS = robot.rs;
+ku_area = robot.ku.areas;
+ku_area_proc = ku_area(ku_area>0.001);
+LOS_proc = LOS(ku_area>0.001);
+cmap = colormap("hsv");
+figure;
+scatter(LOS_proc,ku_area_proc,3,cmap);
+xlabel("LOS (m)");
+ylabel("KU Area (m^2)");

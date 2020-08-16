@@ -30,7 +30,7 @@ y0 = -30;
 
 %% Plot equilibrium points
 
-x0 = -30:1:-1; % Location of Waypoint
+x0 = -15:1:-1; % Location of Waypoint
 y0 = -30:1:-1; % Location of Waypoint
 c = 10000; % Perception objective weight
 wypts.xs = zeros(length(x0)*length(y0),1);

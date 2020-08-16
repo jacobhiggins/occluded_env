@@ -23,17 +23,23 @@ classdef map < handle
         plt_trail % graphic handle for trail
         plt_proj % graphic handle for projected motion
         plt_cmd % graphic handle for commanded inputs
+        plt_heading;
         plt_corner_mpc_r; % graphic handle for right corners
         plt_corner_mpc_l; % graphic handle for left corners
         plt_corner_wp;
         plts; % Running list of all plots
         plt_circ % graphic handle for waypoint circle
+        plt_FOV
+        plt_knownunknown % known-unknown area
         plt_xlim % x limit for sim plot
         plt_ylim % y limit for sim plot
         show_trail = true; % showing trail
         show_circ = true; % boolean for showing/not showing circ
+        show_FOV = true; % show FOV
+        show_knownunknown = true;
         show_proj = true; % s howing/not showing projected motion
         show_cmd = true; % showing/not showing commanded inputs
+        show_heading = true; % show heading
         show_cornerMPC = true; % show corner MPC
         show_cornerWP = true; % show corner waypoint
         show_legend = true; % show legend
@@ -42,7 +48,10 @@ classdef map < handle
         plt_vys % graphics handle for y velocities
         plt_uxs
         plt_uys
+        plt_uvs % speed cmd
+        plt_uws % angular velocity command
         plt_LOS
+        plt_ku_area % plot ku area
         % **** Recording Video ****
         fig_main
         vid
@@ -58,6 +67,11 @@ classdef map < handle
             circ.x = p.r*cos(theta) + p.x;
             circ.y = p.r*sin(theta) + p.y;
         end
+        function FOV = get_FOV(obj,p)
+           theta = 0:0.05:2*pi;
+           FOV.x = p.maxRad*cos(theta) + p.x;
+           FOV.y = p.maxRad*sin(theta) + p.y;
+        end
         function initial_plot(obj,p)
             hold on;
             % Save figure handle (for video)
@@ -71,7 +85,7 @@ classdef map < handle
             % Robot (point mass)
             obj.plt_p = plot(p.x,p.y,'ro','MarkerFaceColor','blue','DisplayName','Point Mass');
             % Waypoint
-            obj.plt_wypt = plot(p.x,p.y+p.maxRad,'b*','DisplayName','new pursuit');
+            obj.plt_wypt = plot(p.x,p.y+p.maxRad,'b*','DisplayName','waypoint');
             % Model Trajectory
             obj.plt_traj = plot(obj.wypt_bases(:,1),obj.wypt_bases(:,2),'r--','DisplayName','gen traj');
             % Trail of robot
@@ -84,6 +98,18 @@ classdef map < handle
                obj.plt_circ = plot(circ_shape.x,circ_shape.y);
                obj.plts = [obj.plts obj.plt_circ];
             end
+            % Show FOV
+            if obj.show_FOV
+               FOV_shape = obj.get_FOV(p);
+               obj.plt_FOV = plot(FOV_shape.x,FOV_shape.y,"--","DisplayName","FOV");
+               obj.plts = [obj.plts obj.plt_FOV];
+            end
+            % Show known unknown area
+            if obj.show_knownunknown
+               ku = obj.knownunknown(p);
+               obj.plt_knownunknown = fill(ku.poly.x,ku.poly.y,'r',"DisplayName","Unknown Area");
+               obj.plts = [obj.plts obj.plt_FOV];
+            end
             % Show projected motion
             if obj.show_proj
                 obj.plt_proj = plot(p.proj_mot.x,p.proj_mot.y,'r-','LineWidth',3,'DisplayName','Projected Path');
@@ -93,6 +119,10 @@ classdef map < handle
             if obj.show_cmd
                 obj.plt_cmd = quiver(p.x,p.y,1,1,'LineWidth',2,'DisplayName',sprintf("Commanded %s",p.cmd_input.name));
                 obj.plts = [obj.plts obj.plt_cmd];
+            end
+            if obj.show_heading
+               obj.plt_heading = quiver(p.x,p.y,0,1,'LineWidth',2,'DisplayName',"Heading");
+               obj.plts = [obj.plts obj.plt_heading];
             end
             % Show MPC corner
             if obj.show_cornerMPC
@@ -136,21 +166,36 @@ classdef map < handle
             obj.plt_vys = plot(p.ts,p.vs.vys,'LineWidth',2);
             ylabel("Velocity (m/s)");
             legend("X vels","Y vels","Location","eastoutside");
-            title("Velocities");
+            title("Linear Velocities");
             subplot(3,1,2);
             hold on;
             grid on;
-            obj.plt_uxs = plot(p.ts,p.cmd_inputs.x,'LineWidth',2);
-            obj.plt_uys = plot(p.ts,p.cmd_inputs.y,'LineWidth',2);
-            ylabel("Accelerations");
-            legend("X accs", "Y accs","Location","eastoutside");
+            if class(p)=="UGV"||class(p)=="turtlebot"
+                yyaxis left;
+                obj.plt_uvs = plot(p.ts,p.cmd_inputs.vs,'LineWidth',2);
+                ylabel("m/s");
+                yyaxis right;
+                obj.plt_uws = plot(p.ts,p.cmd_inputs.omegas,'LineWidth',2);
+                legend(texlabel("v"), "\omega","Location","eastoutside");
+                ylabel("rad/s");
+            else
+                obj.plt_uxs = plot(p.ts,p.cmd_inputs.x,'LineWidth',2);
+                obj.plt_uys = plot(p.ts,p.cmd_inputs.y,'LineWidth',2);
+                legend("X accs", "Y accs","Location","eastoutside");
+                ylabel(p.cmd_input.name);
+            end
             title("Commanded Inputs");
             subplot(3,1,3);
             hold on;
             grid on;
+            yyaxis left;
             obj.plt_LOS = plot(p.ts,p.rs,'LineWidth',2);
+            ylabel("m");
+            yyaxis right;
+            obj.plt_ku_area = plot(p.ts,p.ku.areas,'Linewidth',2);
+            ylabel("m^2");
             xlabel("Time (s)");
-            ylabel("Line of Sight (m)");
+            legend("LOS","KU Area","Location","eastoutside");
             
         end
         function update_plot(obj,p)
@@ -167,12 +212,34 @@ classdef map < handle
                 obj.plt_circ.XData = circ_shape.x;
                 obj.plt_circ.YData = circ_shape.y;
             end
+            if obj.show_FOV
+               FOV_shape = obj.get_FOV(p);
+               obj.plt_FOV.XData = FOV_shape.x;
+               obj.plt_FOV.YData = FOV_shape.y;
+            end
+            if obj.show_knownunknown
+               ku = obj.knownunknown(p);
+               try
+                   obj.plt_knownunknown.XData = ku.poly.x;
+                   obj.plt_knownunknown.YData = ku.poly.y;
+               catch
+                   obj.plt_knownunknown.XData = [-100,-99,-99,-100];
+                   obj.plt_knownunknown.YData = [-100,-100,-99,-99];
+               end
+               p.ku.areas = [p.ku.areas ku.area];
+            end
             % Update commanded inputs
             if obj.show_cmd
                obj.plt_cmd.XData = p.x;
                obj.plt_cmd.YData = p.y;
                obj.plt_cmd.UData = p.cmd_input.x;
                obj.plt_cmd.VData = p.cmd_input.y;
+            end
+            if obj.show_heading
+               obj.plt_heading.XData = p.x;
+               obj.plt_heading.YData = p.y;
+               obj.plt_heading.UData = 2*cos(p.theta);
+               obj.plt_heading.VData = 2*sin(p.theta);
             end
             % Update MPC corner line
             if obj.show_cornerMPC
@@ -206,12 +273,21 @@ classdef map < handle
             obj.plt_vxs.YData = p.vs.vxs;
             obj.plt_vys.XData = p.ts;
             obj.plt_vys.YData = p.vs.vys;
-            obj.plt_uxs.XData = p.ts;
-            obj.plt_uxs.YData = p.cmd_inputs.x;
-            obj.plt_uys.XData = p.ts;
-            obj.plt_uys.YData = p.cmd_inputs.y;
+            if class(p)=="UGV"||class(p)=="turtlebot"
+                obj.plt_uvs.XData = p.ts;
+                obj.plt_uvs.YData = p.cmd_inputs.vs;
+                obj.plt_uws.XData = p.ts;
+                obj.plt_uws.YData = p.cmd_inputs.omegas;
+            else
+                obj.plt_uxs.XData = p.ts;
+                obj.plt_uxs.YData = p.cmd_inputs.x;
+                obj.plt_uys.XData = p.ts;
+                obj.plt_uys.YData = p.cmd_inputs.y;
+            end
             obj.plt_LOS.XData = p.ts;
             obj.plt_LOS.YData = p.rs;
+            obj.plt_ku_area.XData = p.ts;
+            obj.plt_ku_area.YData = p.ku.areas;
             % Update title
             title(obj.fig_main.CurrentAxes,sprintf("MPC Motion, Time: %0.2f",p.t));
 
@@ -256,6 +332,78 @@ classdef map < handle
                   isVis = false; 
                end
             end
+        end
+        function ku = knownunknown(obj,p)
+            ku.area = 0;
+            ku.poly.x = [-1000,-999,-999,-1000];
+            ku.poly.y = [-1000,-1000,-999,-999];
+            xc = p.xc_mpc_r;
+            yc = p.yc_mpc_r;
+           [x,y] = c2u(p.x,p.y,xc,yc,p.M_mpc);
+           hw2 = abs(p.next_owall);
+           
+           if norm([x,y],2)>p.maxRad || y > 0.0
+              return 
+           end
+           % Get upper wall interception point
+           try
+                [xus,yus] = linecirc(0,hw2,x,y,p.maxRad);
+                xu = xus(1);
+                yu = yus(1);
+                if xus(2) > xu
+                    xu = xus(2);
+                    yu = yus(2);
+                end
+            catch
+                
+           end 
+            
+           % Get lower wall interception point
+            try
+                [xls,yls] = linecirc(0,0,x,y,p.maxRad);
+                xl = xls(1);
+                yl = yls(1);
+                if xls(2) > xl
+                    xl = xls(2);
+                    yl = yls(2);
+                end
+            catch
+                return
+            end
+            
+            % Get mid point
+            phi = atan2(-x,-y);
+            R = (hw2 - y)/cos(phi);
+            r = min(R,p.maxRad);
+            xm = x + r*sin(phi);
+            ym = y + r*cos(phi);
+            m = p.M_mpc\[xm;ym] + [xc;yc];
+            try
+                u = p.M_mpc\[xu;yu] + [xc;yc];
+            end
+            try
+                l = p.M_mpc\[xl;yl] + [xc;yc];
+            end
+            phi_1 = atan2(yl-y,xl-x);
+            if xm < xu && ~isempty(xu)
+                % Extra points for good curvature
+                phi_2 = atan2(yu-y,xu-x);
+%                 del_phi = phi_2 - phi_1;
+                extra = p.M_mpc\([x;y] + p.maxRad*[cos(phi_2:-0.157:phi_1);sin(phi_2:-0.157:phi_1)]) + [xc;yc];
+                
+                ku.poly.x = [xc;m(1);u(1);extra(1,:)';l(1)];
+                ku.poly.y = [yc;m(2);u(2);extra(2,:)';l(2)];
+                
+            elseif ~isempty(xl)
+                phi_2 = atan2(ym-y,xm-x);
+                extra = p.M_mpc\([x;y] + p.maxRad*[cos(phi_2:-0.157:phi_1);sin(phi_2:-0.157:phi_1)]) + [xc;yc];
+                
+                
+                ku.poly.x = [xc;m(1);extra(1,:)';l(1)];
+                ku.poly.y = [yc;m(2);extra(2,:)';l(2)];
+            end
+            ku.area = polyarea(ku.poly.x,ku.poly.y);
+           
         end
     end
 end

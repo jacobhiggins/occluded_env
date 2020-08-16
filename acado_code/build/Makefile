@@ -111,84 +111,84 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named point_mass7
+# Target rules for targets named vel_cmd
 
 # Build rule for target.
-point_mass7: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 point_mass7
-.PHONY : point_mass7
+vel_cmd: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 vel_cmd
+.PHONY : vel_cmd
 
 # fast build rule for target.
-point_mass7/fast:
-	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/build
-.PHONY : point_mass7/fast
+vel_cmd/fast:
+	$(MAKE) -f CMakeFiles/vel_cmd.dir/build.make CMakeFiles/vel_cmd.dir/build
+.PHONY : vel_cmd/fast
 
 #=============================================================================
-# Target rules for targets named point_mass6
+# Target rules for targets named DD_cmd
 
 # Build rule for target.
-point_mass6: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 point_mass6
-.PHONY : point_mass6
+DD_cmd: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 DD_cmd
+.PHONY : DD_cmd
 
 # fast build rule for target.
-point_mass6/fast:
-	$(MAKE) -f CMakeFiles/point_mass6.dir/build.make CMakeFiles/point_mass6.dir/build
-.PHONY : point_mass6/fast
+DD_cmd/fast:
+	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/build
+.PHONY : DD_cmd/fast
 
-point_mass6.o: point_mass6.cpp.o
+DD_cmd.o: DD_cmd.cpp.o
 
-.PHONY : point_mass6.o
-
-# target to build an object file
-point_mass6.cpp.o:
-	$(MAKE) -f CMakeFiles/point_mass6.dir/build.make CMakeFiles/point_mass6.dir/point_mass6.cpp.o
-.PHONY : point_mass6.cpp.o
-
-point_mass6.i: point_mass6.cpp.i
-
-.PHONY : point_mass6.i
-
-# target to preprocess a source file
-point_mass6.cpp.i:
-	$(MAKE) -f CMakeFiles/point_mass6.dir/build.make CMakeFiles/point_mass6.dir/point_mass6.cpp.i
-.PHONY : point_mass6.cpp.i
-
-point_mass6.s: point_mass6.cpp.s
-
-.PHONY : point_mass6.s
-
-# target to generate assembly for a file
-point_mass6.cpp.s:
-	$(MAKE) -f CMakeFiles/point_mass6.dir/build.make CMakeFiles/point_mass6.dir/point_mass6.cpp.s
-.PHONY : point_mass6.cpp.s
-
-point_mass7.o: point_mass7.cpp.o
-
-.PHONY : point_mass7.o
+.PHONY : DD_cmd.o
 
 # target to build an object file
-point_mass7.cpp.o:
-	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/point_mass7.cpp.o
-.PHONY : point_mass7.cpp.o
+DD_cmd.cpp.o:
+	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/DD_cmd.cpp.o
+.PHONY : DD_cmd.cpp.o
 
-point_mass7.i: point_mass7.cpp.i
+DD_cmd.i: DD_cmd.cpp.i
 
-.PHONY : point_mass7.i
+.PHONY : DD_cmd.i
 
 # target to preprocess a source file
-point_mass7.cpp.i:
-	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/point_mass7.cpp.i
-.PHONY : point_mass7.cpp.i
+DD_cmd.cpp.i:
+	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/DD_cmd.cpp.i
+.PHONY : DD_cmd.cpp.i
 
-point_mass7.s: point_mass7.cpp.s
+DD_cmd.s: DD_cmd.cpp.s
 
-.PHONY : point_mass7.s
+.PHONY : DD_cmd.s
 
 # target to generate assembly for a file
-point_mass7.cpp.s:
-	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/point_mass7.cpp.s
-.PHONY : point_mass7.cpp.s
+DD_cmd.cpp.s:
+	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/DD_cmd.cpp.s
+.PHONY : DD_cmd.cpp.s
+
+vel_cmd.o: vel_cmd.cpp.o
+
+.PHONY : vel_cmd.o
+
+# target to build an object file
+vel_cmd.cpp.o:
+	$(MAKE) -f CMakeFiles/vel_cmd.dir/build.make CMakeFiles/vel_cmd.dir/vel_cmd.cpp.o
+.PHONY : vel_cmd.cpp.o
+
+vel_cmd.i: vel_cmd.cpp.i
+
+.PHONY : vel_cmd.i
+
+# target to preprocess a source file
+vel_cmd.cpp.i:
+	$(MAKE) -f CMakeFiles/vel_cmd.dir/build.make CMakeFiles/vel_cmd.dir/vel_cmd.cpp.i
+.PHONY : vel_cmd.cpp.i
+
+vel_cmd.s: vel_cmd.cpp.s
+
+.PHONY : vel_cmd.s
+
+# target to generate assembly for a file
+vel_cmd.cpp.s:
+	$(MAKE) -f CMakeFiles/vel_cmd.dir/build.make CMakeFiles/vel_cmd.dir/vel_cmd.cpp.s
+.PHONY : vel_cmd.cpp.s
 
 # Help Target
 help:
@@ -197,15 +197,15 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
-	@echo "... point_mass7"
+	@echo "... vel_cmd"
 	@echo "... rebuild_cache"
-	@echo "... point_mass6"
-	@echo "... point_mass6.o"
-	@echo "... point_mass6.i"
-	@echo "... point_mass6.s"
-	@echo "... point_mass7.o"
-	@echo "... point_mass7.i"
-	@echo "... point_mass7.s"
+	@echo "... DD_cmd"
+	@echo "... DD_cmd.o"
+	@echo "... DD_cmd.i"
+	@echo "... DD_cmd.s"
+	@echo "... vel_cmd.o"
+	@echo "... vel_cmd.i"
+	@echo "... vel_cmd.s"
 .PHONY : help
 
 

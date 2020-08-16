@@ -80,9 +80,9 @@ classdef mapA < map
             wypt_bases = obj.wypt_bases;
         end
         function set_obs(obj)
-%             obs_secs = [];
+            obs_secs = [];
 %             obs_secs = [2,2]; % Define section for obstacles
-            obs_secs = [2];
+%             obs_secs = [2];
             obs_ls = [30,30]; % Define lengths of obstacles
             obs_ws = [15,15]; % Define widths of obstacles
             %     fracws = [1];
