@@ -4,6 +4,7 @@ function simulation()
 %     map = mapB();
     map.setParams();
     map.show_cornerWP = false;
+    map.show_heading = false;
     
     % Initialize point
 %     p = point();

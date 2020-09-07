@@ -1,15 +1,20 @@
-classdef turtlebot < UGV
+classdef jackal < UGV
    properties
        
    end
    methods
        function setParams(obj,map)
            % Max speed = 0.65 m/s
-           obj.R = 0.038;
-           obj.L = 0.354;
-           obj.max_w = 17.11; % Max rotation rate for single wheel
-           obj.max_omega = 0.5;% Max heading angular velocity
-           obj.max_v = 0.65;
+           clear obj.getcorner_MPC
+           clear obj.getcorner_WP
+           clear obj.get_wypt
+           clear obj.motion_step
+           obj.R = 0.075;
+           obj.L = 0.42;
+           obj.max_w = 26.667; % Max rotation for single wheel
+           obj.max_omega = 1.5; % Max angular rotation for heading
+           obj.max_v = 2.0;
+           obj.size = 0.25; % m, max radius
            obj.dd = DifferentialDrive(obj.R,obj.L);
            obj.dt = 0.1;
            obj.t = 0.0;

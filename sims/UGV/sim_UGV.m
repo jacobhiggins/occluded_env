@@ -1,12 +1,13 @@
 function sim_UGV()
     %% Initialize objects
 %     map = mapA();
-    map = mapA1();
+%     map = mapA1();
+    map = mapA3();
     map.setParams();
-    map.show_cornerMPC = false;
+%     map.show_cornerMPC = false;
     map.show_cornerWP = false;
     
-    robot = turtlebot();
+    robot = jackal();
     robot.setParams(map);
     
     % Display Map and Robot
@@ -33,6 +34,7 @@ function sim_UGV()
         % Using inputs, step in simulation
 %         robot.motion_stepDD();
         robot.motion_step();
+        map.update_probs(robot);
         % Update plots
         map.update_plot(robot);
         % Check map's end condition

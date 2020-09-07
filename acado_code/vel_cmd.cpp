@@ -52,7 +52,7 @@ int main()
   BMatrix W = eye<bool>( h.getDim() );
   BMatrix WN = eye<bool>( hN.getDim() );
 
-  OCP ocp(0.0,5.0,10);
+  OCP ocp(0.0,5.0,50);
 
   ocp.subjectTo( f );
 
@@ -60,8 +60,8 @@ int main()
 
   ocp.minimizeLSQEndTerm( WN, hN );
 
-  ocp.subjectTo( -0.65 <= vx <= 0.65 );
-  ocp.subjectTo( -0.65 <= vy <= 0.65 );
+  ocp.subjectTo( -2.0 <= vx <= 2 );
+  ocp.subjectTo( -2.0 <= vy <= 2 );
   // ocp.subjectTo( -3.14/3 <= omega <= 3.14/3 );
   ocp.subjectTo( left_bound - x - epsilon <= 0 );
   ocp.subjectTo( x - epsilon - m_right*y - right_bound <= 0);

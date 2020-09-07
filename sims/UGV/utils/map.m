@@ -14,7 +14,7 @@ classdef map < handle
         corners_l % Defined left corners of the map
         obss % obstacles of the map
         boxs % Used in is_visible function
-        patches % Patches of uncertainty
+        patches = struct("num",10,"xstart",0.0,"xend",0.0,"ybottom",0.0,"ytop",0.0,"width",0.0,"centers",[]); % Patches of uncertainty
         end_flag = true; % true when the sim should end
         % **** Main Plots ****
         plt_p % graphic handle for point
@@ -31,6 +31,7 @@ classdef map < handle
         plt_circ % graphic handle for waypoint circle
         plt_FOV
         plt_knownunknown % known-unknown area
+        plt_patches
         plt_xlim % x limit for sim plot
         plt_ylim % y limit for sim plot
         show_trail = true; % showing trail
@@ -42,6 +43,7 @@ classdef map < handle
         show_heading = true; % show heading
         show_cornerMPC = true; % show corner MPC
         show_cornerWP = true; % show corner waypoint
+        show_patches = true;
         show_legend = true; % show legend
         % **** Auxilary Plots ****
         plt_vxs % graphics handle for x velocities
@@ -81,6 +83,17 @@ classdef map < handle
             for i = 1:length(obj.walls)
                wall = obj.walls{i};
                patch(wall.x,wall.y,gray);
+            end
+            % Show patches
+            if obj.show_patches
+                for i = 0:(obj.patches.num-1)
+                    x1 = obj.patches.xstart + i*obj.patches.width;
+                    x2 = x1 + obj.patches.width;
+                    y1 = obj.patches.ybottom;
+                    y2 = obj.patches.ytop;
+                    plt_patch = patch([x1 x2 x2 x1],[y1 y1 y2 y2],obj.patches.probs(i+1)*ones(1,3),"EdgeColor","none");
+                    obj.plt_patches = cat(2,obj.plt_patches,plt_patch);
+                end
             end
             % Robot (point mass)
             obj.plt_p = plot(p.x,p.y,'ro','MarkerFaceColor','blue','DisplayName','Point Mass');
@@ -142,6 +155,7 @@ classdef map < handle
                obs = obj.obss{i};
                patch([obs.xs_map(1),obs.xs_map(2),obs.xs_map(2),obs.xs_map(1)],[obs.ys_map(1),obs.ys_map(1),obs.ys_map(2),obs.ys_map(2)],black);
             end
+            
             % Formatting
             axis equal;
             xlim(obj.plt_xlim);
@@ -170,7 +184,7 @@ classdef map < handle
             subplot(3,1,2);
             hold on;
             grid on;
-            if class(p)=="UGV"||class(p)=="turtlebot"
+            if class(p)=="UGV"||class(p)=="turtlebot"||class(p)=="jackal"
                 yyaxis left;
                 obj.plt_uvs = plot(p.ts,p.cmd_inputs.vs,'LineWidth',2);
                 ylabel("m/s");
@@ -199,6 +213,7 @@ classdef map < handle
             
         end
         function update_plot(obj,p)
+            
             % Update robot position
             obj.plt_p.XData = p.x;
             obj.plt_p.YData = p.y;
@@ -206,6 +221,13 @@ classdef map < handle
             p.get_wypt(obj);
             obj.plt_wypt.XData = p.wypt.x;
             obj.plt_wypt.YData = p.wypt.y;
+            % Update patches
+            if obj.show_patches
+               for i = 1:obj.patches.num
+                  plt_patch = obj.plt_patches(i);
+                  plt_patch.FaceColor = obj.patches.probs(i)*ones(1,3);
+               end
+            end
             % Update circle
             if obj.show_circ
                 circ_shape = obj.get_circ(p);
@@ -243,8 +265,13 @@ classdef map < handle
             end
             % Update MPC corner line
             if obj.show_cornerMPC
-               obj.plt_corner_mpc_r.XData = [p.x p.xc_mpc_r];
-               obj.plt_corner_mpc_r.YData = [p.y p.yc_mpc_r];
+                if p.rc_active
+                    obj.plt_corner_mpc_r.XData = [p.x p.xc_mpc_r];
+                    obj.plt_corner_mpc_r.YData = [p.y p.yc_mpc_r];
+                else
+                    obj.plt_corner_mpc_r.XData = [0 0];
+                    obj.plt_corner_mpc_r.YData = [0 0];
+                end
                if p.lc_active
                   obj.plt_corner_mpc_l.XData = [p.x p.xc_mpc_l];
                   obj.plt_corner_mpc_l.YData = [p.y p.yc_mpc_l];
@@ -273,7 +300,7 @@ classdef map < handle
             obj.plt_vxs.YData = p.vs.vxs;
             obj.plt_vys.XData = p.ts;
             obj.plt_vys.YData = p.vs.vys;
-            if class(p)=="UGV"||class(p)=="turtlebot"
+            if class(p)=="UGV"||class(p)=="turtlebot"||class(p)=="jackal"
                 obj.plt_uvs.XData = p.ts;
                 obj.plt_uvs.YData = p.cmd_inputs.vs;
                 obj.plt_uws.XData = p.ts;
@@ -325,12 +352,17 @@ classdef map < handle
             xr = p.x;
             yr = p.y;
             isVis = true;
+            % Visible if not hitting obstacle
             for i = 1:length(obj.boxs)
                box = obj.boxs{i};
                [xi,yi] = polyxpoly([xr xc],[yr yc],box.x,box.y);
                if length(xi) > 1
                   isVis = false; 
                end
+            end
+            % Visible if within FOV range
+            if norm([xr-xc,yr-yc],2) > p.maxRad
+                isVis = false;
             end
         end
         function ku = knownunknown(obj,p)
@@ -404,6 +436,26 @@ classdef map < handle
             end
             ku.area = polyarea(ku.poly.x,ku.poly.y);
            
+        end
+        function update_probs(obj,p)
+            p_z1_m1 = 0.9;
+            p_z1_m0 = 1 - p_z1_m1;
+            p_z0_m0 = 0.9;
+            p_z0_m1 = 1 - p_z0_m0;
+            p_move = 0.1;
+            p_stay = 0.9;
+            % Update probs based on measurement
+            for i = 1:obj.patches.num
+               if norm([p.x-obj.patches.centers(1,i),p.y-obj.patches.centers(2,i)]) < p.r
+                  obj.patches.probs(i) = p_z0_m0*obj.patches.probs(i)/(p_z0_m0*obj.patches.probs(i) + p_z0_m1*(1-obj.patches.probs(i)));
+               end
+            end
+            % Project into the future
+            for t = p.dt:p.dt:(p.y/p.vy)
+                for i = 1:obj.patches.num-1
+                    obj.patches.probs(i) = p_move*obj.patches.probs(i+1) + p_stay*obj.patches.probs(i);
+                end
+            end
         end
     end
 end

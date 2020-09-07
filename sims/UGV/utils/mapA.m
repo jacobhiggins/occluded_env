@@ -50,6 +50,8 @@ classdef mapA < map
            obj.plt_ylim = [0,obj.hls(3)+obj.hls(1)-obj.hws(2)];
            % Set corner
            obj.set_corners();
+           % Set patches of probabilities
+           obj.set_patches();
            % Suggested maximum waypoint radius
            obj.maxRad_suggest = 50;
         end
@@ -151,6 +153,17 @@ classdef mapA < map
             obj.corners_r = [obj.corners_r;obj.hls(2),obj.hls(1)+obj.hls(3)-obj.hws(2),1];
             obj.corners_l = [obj.corners_l;obj.hls(2)-obj.hws(3),obj.hls(1)+obj.hls(3)-obj.hws(2)];
             obj.Ms_mpc = cat(2,obj.Ms_mpc,eye(2));
+        end
+        function set_patches(obj)
+            obj.patches.num = 50;
+            obj.patches.xstart = -obj.hws(1);
+            obj.patches.xend = obj.hls(2) - obj.hws(3);
+            obj.patches.ybottom = obj.hls(1)-obj.hws(2);
+            obj.patches.ytop = obj.hls(1);
+            obj.patches.probs = 1.0*ones(1,obj.patches.num);
+            obj.patches.width = (obj.patches.xend - obj.patches.xstart)/obj.patches.num;
+            obj.patches.centers = [(obj.patches.width)*(0:obj.patches.num-1)+obj.patches.width/2+obj.patches.xstart;...
+                ((obj.patches.ytop+obj.patches.ybottom)/2)*ones(1,obj.patches.num)];
         end
         function check_flag(obj,p)
             if p.y > obj.hls(3)+obj.hls(1)-obj.hws(2)-5

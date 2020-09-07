@@ -28,10 +28,14 @@ y0 = -30;
 % Test newton's method
 [x,y] = newtonsMethod(x0,y0,c,cost_dx_handle,cost_dy_handle,H_handle);
 
-%% Plot equilibrium points
-
-x0 = -15:1:-1; % Location of Waypoint
-y0 = -30:1:-1; % Location of Waypoint
+%% Calculate Equilibria
+step = 1;
+x0 = -15:step:-1; % Location of Waypoint
+y0 = -30:step:-1; % Location of Waypoint
+x0 = [x0 -15:step:-1];
+y0 = [y0 1:step:15];
+x0 = [x0 1:step:30];
+y0 = [y0 1:step:15];
 c = 10000; % Perception objective weight
 wypts.xs = zeros(length(x0)*length(y0),1);
 wypts.ys = zeros(length(x0)*length(y0),1);
@@ -41,6 +45,9 @@ count = 1;
 w = waitbar(0,"Calculating Equilibrium Points");
 for j = 1:length(x0)
    for i = 1:length(y0)
+       if x0(j)>0 && y0(i)<0
+          continue; 
+       end
        [x,y] = newtonsMethod(x0(j),y0(i),c,cost_dx_handle,cost_dy_handle,H_handle);
        equil.xs(count) = x;
        equil.ys(count) = y;
@@ -51,19 +58,20 @@ for j = 1:length(x0)
    end
 end
 close(w);
+%% Plot Equilibra
 cmap = cool(length(x0)*length(y0));
 figure(1);
 subplot(1,2,1);
 scatter(wypts.xs,wypts.ys,5,cmap,'filled');
-ylim([y0(1),0]);
-xlim([x0(1),0]);
+ylim([y0(1),y0(end)]);
+xlim([x0(1),y0(end)]);
 xlabel("X Pos (m)");
 ylabel("Y Pos (m)");
 title("Waypoint Placement");
 subplot(1,2,2);
 scatter(equil.xs,equil.ys,5,cmap,'filled');
-ylim([y0(1),0]);
-xlim([x0(1),0]);
+ylim([y0(1),y0(end)]);
+xlim([x0(1),x0(end)]);
 xlabel("X Pos (m)");
 ylabel("Y Pos (m)");
 title("Equilibrium Point");

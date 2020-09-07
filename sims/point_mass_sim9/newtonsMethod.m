@@ -2,7 +2,7 @@ function [x,y] = newtonsMethod(x0,y0,c,fx,fy,J)
     % Given initial guess x0, y0
     % Find zero of multivariate funciton f = (fx, fy)
     % J = jacobian of f
-    n = 50000000;
+    n = 1000000;
     epsilon = 0.001;
     
     old = [x0;y0];

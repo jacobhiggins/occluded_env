@@ -1,10 +1,9 @@
 % Three corridor map
-% Add left corners to map
-% Smaller than mapA, better for jackal/turtlebot
-classdef mapA1 < map
+% Reflects real dimensions of the jackal/lab arena layout
+classdef mapA3 < map
     properties
-       hls = [20,40,10];
-       hws = [5,5,5];
+       hls = [5.4-0.235,4-0.235];
+       hws = [2.5,2.5];
     end
     methods
         function setParams(obj)
@@ -22,22 +21,22 @@ classdef mapA1 < map
            obj.sections{3} = eye(2);
            % Set x,y locations of wall
            
-           wall1.x = [obj.hws(1),obj.hls(2)-obj.hws(3),obj.hls(2)-obj.hws(3),obj.hws(1)];
-           wall1.y = [0,0,obj.hls(1)-obj.hws(2),obj.hls(1)-obj.hws(2)];
+           wall1.x = [obj.hws(1),obj.hls(2),obj.hls(2),obj.hws(1)];
+           wall1.y = [0,0,obj.hls(1),obj.hls(1)];
            obj.walls{1} = wall1;
-           box1.x = [obj.hws(1),obj.hls(2)-obj.hws(3),obj.hls(2)-obj.hws(3),obj.hws(1),obj.hws(1)];
+           box1.x = [obj.hws(1),obj.hls(2),obj.hls(2),obj.hws(1),obj.hws(1)];
            box1.y = [0,0,obj.hls(1)-obj.hws(2),obj.hls(1)-obj.hws(2),0];
            obj.boxs{1} = box1;
            
-           wall2.x = [-obj.hws(1),obj.hls(2)-obj.hws(3),obj.hls(2)-obj.hws(3),-obj.hws(1)];
-           wall2.y = [obj.hls(1),obj.hls(1),obj.hls(1)+obj.hls(3)-obj.hws(2),obj.hls(1)+obj.hls(3)-obj.hws(2)];
+           wall2.x = [-obj.hws(1),obj.hls(2),obj.hls(2),-obj.hws(1)];
+           wall2.y = [obj.hls(1),obj.hls(1),1.1*obj.hls(1),1.1*obj.hls(1)];
            obj.walls{2} = wall2;
-           box2.x = [-obj.hws(1),obj.hls(2)-obj.hws(3),obj.hls(2)-obj.hws(3),-obj.hws(1),-obj.hws(1)];
-           box2.y = [obj.hls(1),obj.hls(1),obj.hls(1)+obj.hls(3)-obj.hws(2),obj.hls(1)+obj.hls(3)-obj.hws(2),obj.hls(1)];
+           box2.x = [-obj.hws(1),obj.hls(2),obj.hls(2),-obj.hws(1)];
+           box2.y = [obj.hls(1),obj.hls(1),1.1*obj.hls(1),1.1*obj.hls(1)];
            obj.boxs{2} = box2;
            
            wall3.x = [-obj.hws(1),0,0,-obj.hws(1)];
-           wall3.y = wall1.y;
+           wall3.y = [0,0,obj.hls(1),obj.hls(1)];
            obj.walls{3} = wall3;
            box3.x = [-obj.hws(1),0,0,-obj.hws(1),-obj.hws(1)];
            box3.y = [wall1.y wall1.y(end)];
@@ -47,14 +46,14 @@ classdef mapA1 < map
            % Set waypoint bases
            obj.set_wypt_base();
            % Set xlim and ylim
-           obj.plt_xlim = [-obj.hws(1),obj.hls(2)];
-           obj.plt_ylim = [0,obj.hls(3)+obj.hls(1)-obj.hws(2)];
+           obj.plt_xlim = [-0.1*obj.hws(1),obj.hls(2)];
+           obj.plt_ylim = [0,1.1*obj.hls(1)];
            % Set corner
            obj.set_corners();
            % Set patches of probabilities
            obj.set_patches();
            % Suggested maximum waypoint radius
-           obj.maxRad_suggest = 10;
+           obj.maxRad_suggest = 1.5;
         end
         function set_wypt_base(obj)
             % Waypoint bases, n x 2
@@ -76,8 +75,8 @@ classdef mapA1 < map
                 y2 = (y2+(obj.hls(1) + obj.hws(2)*(avoid1-1)/2))/2;
                 obj.wypt_bases = [obj.wypt_bases;x1,y1;x2,y2];
             end
-            obj.wypt_bases = [obj.wypt_bases;obj.hls(2)-obj.hws(3)/2,max(obj.hls(1)-obj.hws(2)/2,obj.wypt_bases(end,2))];
-            obj.wypt_bases = [obj.wypt_bases;obj.hls(2)-obj.hws(3)/2,obj.hls(3)+ obj.hls(1)];
+            obj.wypt_bases = [obj.wypt_bases;obj.hls(2),max(obj.hls(1)-obj.hws(2)/2,obj.wypt_bases(end,2))];
+%             obj.wypt_bases = [obj.wypt_bases;obj.hls(2)-obj.hws(3)/2,0];
         end
         function wypt_bases = get_wypt_bases(obj)
             wypt_bases = obj.wypt_bases;
@@ -116,7 +115,6 @@ classdef mapA1 < map
             end
         end
         function set_corners(obj)
-            
             obj.corners_r = [obj.hws(1),obj.hls(1)-obj.hws(2),1]; % xc, yc, avoid (+1 clockwise, -1 counterclockwise)
             obj.corners_l = [0,obj.hls(1)-obj.hws(2)]; % xc, yc, rc # (this is associated with first corner
 %             M2 = [0,1;-1,0];
@@ -143,22 +141,22 @@ classdef mapA1 < map
                 obj.walls_mpc = [obj.walls_mpc -30 -1*(obj.hws(2)-obs.w)];
             end
             % Corner at end of 2nd hallway
-            obj.walls_mpc = [obj.walls_mpc -obj.hws(2)];
-            obj.corners_r = [obj.corners_r;obj.hls(2)-obj.hws(3),obj.hls(1),-1];
-            obj.Ms_mpc = cat(2,obj.Ms_mpc,[0,1;1,0]);
-            
-            obj.corners_l = [obj.corners_l;obj.hls(2)-obj.hws(3),obj.hls(1)-obj.hws(2)];
-            
-            % Corner at end of last hallway
-            obj.walls_mpc = [obj.walls_mpc -obj.hws(3)];
-            obj.corners_r = [obj.corners_r;obj.hls(2),obj.hls(1)+obj.hls(3)-obj.hws(2),1];
-            obj.corners_l = [obj.corners_l;obj.hls(2)-obj.hws(3),obj.hls(1)+obj.hls(3)-obj.hws(2)];
-            obj.Ms_mpc = cat(2,obj.Ms_mpc,eye(2));
+%             obj.walls_mpc = [obj.walls_mpc -obj.hws(2)];
+%             obj.corners_r = [obj.corners_r;obj.hls(2)-obj.hws(3),obj.hls(1)-obj.hws(2),1];
+%             obj.Ms_mpc = cat(2,obj.Ms_mpc,[0,-1;1,0]);
+%             
+%             obj.corners_l = [obj.corners_l;obj.hls(2)-obj.hws(3),obj.hls(1)];
+%             
+%             % Corner at end of last hallway
+%             obj.walls_mpc = [obj.walls_mpc -obj.hws(3)];
+%             obj.corners_r = [obj.corners_r;obj.hls(2)-obj.hws(3),-10000,1];
+%             obj.corners_l = [obj.corners_l;obj.hls(2),0];
+%             obj.Ms_mpc = cat(2,obj.Ms_mpc,eye(2));
         end
         function set_patches(obj)
             obj.patches.num = 50;
             obj.patches.xstart = -obj.hws(1);
-            obj.patches.xend = obj.hls(2) - obj.hws(3);
+            obj.patches.xend = obj.hls(2);
             obj.patches.ybottom = obj.hls(1)-obj.hws(2);
             obj.patches.ytop = obj.hls(1);
             obj.patches.probs = 1.0*ones(1,obj.patches.num);
@@ -167,7 +165,7 @@ classdef mapA1 < map
                 ((obj.patches.ytop+obj.patches.ybottom)/2)*ones(1,obj.patches.num)];
         end
         function check_flag(obj,p)
-            if p.y > obj.hls(3)+obj.hls(1)-obj.hws(2)-5
+            if p.y < obj.hls(1)/2 && p.x > obj.hws(1)
                obj.end_flag = false; 
             end
         end

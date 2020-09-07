@@ -13,7 +13,8 @@ classdef UGV < handle
       yc_mpc_r
       xc_mpc_l
       yc_mpc_l
-      lc_active = false; % False when there is no left corner to consider
+      lc_active = false; % False when left corner is not visible
+      rc_active = false; % False when right corner is not visible
       xc_wp
       yc_wp
       wypt = struc('x',[],'y',[]);
@@ -23,8 +24,10 @@ classdef UGV < handle
       vy
       ax
       ay
-      v_max
+      max_v
+      max_omega
       a_max
+      size
       dt
       t
       r
@@ -42,7 +45,7 @@ classdef UGV < handle
       current_owall = -100; % current outer wall distance from corner
       next_owall = -100; % next hallway wall distance
       % MPC vars
-      N = 10; % Control Horizon
+      N = 50; % Control Horizon
       Nu = 3; % Decision variables
       MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
       MPCoutput = struc('x',[],'u',[]);
@@ -52,6 +55,10 @@ classdef UGV < handle
    end
    methods
        function setParams(obj,map)
+           clear obj.getcorner_MPC
+           clear obj.getcorner_WP
+           clear obj.get_wypt
+           clear obj.motion_step
            obj.R = 0.038;
            obj.L = 0.354;
            obj.max_w = 17.11;
@@ -82,12 +89,13 @@ classdef UGV < handle
            obj.proj_mot.y = obj.y*ones(1,obj.N);
            obj.maxRad = map.maxRad_suggest;
            obj.r = obj.maxRad;
-           obj.getcorner_MPC(map); 
+           obj.getcorner_MPC(map);
+           
        end
        function getcorner_MPC(obj,map)
           persistent curr_rc;
           persistent curr_lc;
-          if isempty(curr_rc)
+          if isempty(curr_rc) || obj.t < 0.001
               curr_rc = 1;
               curr_lc = 1;
           end
@@ -96,19 +104,32 @@ classdef UGV < handle
           [~,dely_lc] = c2u(obj.x,obj.y,obj.xc_mpc_l,obj.yc_mpc_l,M);
           if dely_rc > 0
               curr_rc = min(curr_rc + 1,size(map.corners_r,1));
+              obj.rc_active = false;
           end
+          
+          
+          obj.xc_mpc_r = map.corners_r(curr_rc,1);
+          obj.yc_mpc_r = map.corners_r(curr_rc,2);
+          obj.xc_mpc_l = map.corners_l(curr_lc,1);
+          obj.yc_mpc_l = map.corners_l(curr_lc,2);
+          
+          corner_r.x = obj.xc_mpc_r;
+          corner_r.y = obj.yc_mpc_r;
+          
           corner_l.x = obj.xc_mpc_l;
           corner_l.y = obj.yc_mpc_l;
+          
+          if ~map.isVisible(corner_r,obj)
+              obj.rc_active = false;
+          else
+              obj.rc_active = true;
+          end
           if dely_lc>0 && map.isVisible(corner_l,obj)
               curr_lc =  min(curr_lc + 1,size(map.corners_l,1));
               obj.lc_active = false;
           elseif map.isVisible(corner_l,obj)%dely_lc > -obj.maxRad
               obj.lc_active = true;
           end
-          obj.xc_mpc_r = map.corners_r(curr_rc,1);
-          obj.yc_mpc_r = map.corners_r(curr_rc,2);
-          obj.xc_mpc_l = map.corners_l(curr_lc,1);
-          obj.yc_mpc_l = map.corners_l(curr_lc,2);
           obj.M_mpc = map.Ms_mpc{curr_rc};
           obj.current_owall = map.walls_mpc(curr_rc);
           obj.next_owall = map.walls_mpc(min(curr_rc+1,length(map.walls_mpc)));
@@ -116,7 +137,7 @@ classdef UGV < handle
        function getcorner_WP(obj,map)
            persistent curr_c; % current corner index
            persistent next_c;
-           if isempty(curr_c)
+           if isempty(curr_c) || obj.t < 0.001
                curr_c = 1;
                next_c = 2;
            end
@@ -144,7 +165,7 @@ classdef UGV < handle
            persistent dists; % Distances between waypoints
            persistent vecs; % vectors between waypoints
            persistent c_base; % current waypoint base
-           if isempty(dists)
+           if isempty(dists) || obj.t < 0.001
                for i = 1:length(map.wypt_bases)-1
                    wypta = map.wypt_bases(i,:);
                    wyptb = map.wypt_bases(i+1,:);
@@ -198,6 +219,21 @@ classdef UGV < handle
            if norm([obj.x-next_wpb(1),obj.y-next_wpb(2)],2) < obj.r
                c_base = c_base + 1;
            end
+           % NEW CODE, 09/02/2020
+           %Moving waypoint to edge of FOV
+           del_vec = [waypoint.x - obj.x;waypoint.y - obj.y];
+           del_vec = obj.maxRad*del_vec/norm(del_vec,2);
+           obj.wypt.x = obj.x + del_vec(1);
+           obj.wypt.y = obj.y + del_vec(2);
+           % NEW CODE, 09/02/2020
+       end
+       function get_wypt2(obj,map)
+           % New method of setting placement of waypoint
+           % Always at edge of FOV
+           theta = atan2(obj.yc_wp - obj.y,obj.xc_wp - obj.x);
+           waypoint.y = obj.x + obj.maxRad*cos(theta);
+           waypoint.x = obj.y + obj.maxRad*sin(theta);
+           obj.wypt = waypoint;
        end
        function set_radius(obj,xm2,ym2,theta2,dist_frac)
            r = obj.maxRad;
@@ -501,6 +537,11 @@ classdef UGV < handle
               xc_l = -50;
               yc_l = 0;
            end
+           if obj.rc_active
+              perc_r_weight = 5; 
+           else
+              perc_r_weight = 5;
+           end
            
            % If projected motion doesn't reach corner, don't set slope
            % constraint
@@ -549,8 +590,8 @@ classdef UGV < handle
 %                var_des var_des
 %                ];
            
-           % x, y, vx, vy, epsilon
-           A = diag([10 50 50000 100 1 1000000]);
+           % x, y, phi_right, vx, vy, epsilon
+           A = diag([10 50 perc_r_weight 100 1 1000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
@@ -581,7 +622,7 @@ classdef UGV < handle
        end
        function motion_step(obj)
           persistent del_theta_int;
-          if isempty(del_theta_int)
+          if isempty(del_theta_int) || obj.t < 0.001
              del_theta_int = 0;
           end
           Kv = 1;
@@ -589,7 +630,7 @@ classdef UGV < handle
           Kw_i = 0.001;
           vec = [obj.cmd_input.x;obj.cmd_input.y;0];
           heading = [cos(obj.theta);sin(obj.theta);0];
-          v_cmd = Kv*(dot(vec,heading));
+          v_cmd = Kv*max(min(norm(vec,2),obj.max_v),-obj.max_v);
           theta1 = obj.theta;
           theta2 = atan2(obj.cmd_input.y,obj.cmd_input.x);
           e_theta = theta2 - theta1;
@@ -597,6 +638,7 @@ classdef UGV < handle
 %           del_theta = sign(cross(vec,heading))*acos(dot(vec,heading)/norm(vec,2));
           del_theta_int = del_theta_int + e_theta;
           w_cmd = Kw*e_theta + Kw_i*del_theta_int;
+          w_cmd = min(max(w_cmd,-obj.max_omega),obj.max_omega);
           if obj.debug.is_true
              obj.debug.v_cmds = [obj.debug.v_cmds;v_cmd];
              obj.debug.e_thetas = [obj.debug.e_thetas;e_theta];

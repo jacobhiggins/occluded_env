@@ -6,7 +6,8 @@ classdef point_2 < handle
       yc_mpc_r
       xc_mpc_l
       yc_mpc_l
-      lc_active = false; % False when there is no left corner to consider
+      rc_active = false;
+      lc_active = false;
       xc_wp
       yc_wp
       wypt = struc('x',[],'y',[]);
@@ -33,12 +34,14 @@ classdef point_2 < handle
       LOS = [0.0];
       current_sec = 1; % current section that robot is in
       current_owall = -100; % current outer wall distance from corner
+      next_owall = -100; % next hallway wall distance
       % MPC vars
       N = 50; % Control Horizon
       Nu = 3; % Decision variables
       MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
       MPCoutput = struc('x',[],'u',[]);
       large_num = 100000;
+      ku = struct("areas",[0.0]);
    end
    methods
        function initial_params(obj,map)
@@ -65,11 +68,12 @@ classdef point_2 < handle
            obj.proj_mot.y = obj.y*ones(1,obj.N);
            obj.maxRad = map.maxRad_suggest;
            obj.r = obj.maxRad;
+           obj.getcorner_MPC(map);
        end
        function getcorner_MPC(obj,map)
           persistent curr_rc;
           persistent curr_lc;
-          if isempty(curr_rc)
+          if isempty(curr_rc) || obj.t < 0.001
               curr_rc = 1;
               curr_lc = 1;
           end
@@ -78,21 +82,35 @@ classdef point_2 < handle
           [~,dely_lc] = c2u(obj.x,obj.y,obj.xc_mpc_l,obj.yc_mpc_l,M);
           if dely_rc > 0
               curr_rc = min(curr_rc + 1,size(map.corners_r,1));
+              obj.rc_active = false;
           end
+          
+          
+          obj.xc_mpc_r = map.corners_r(curr_rc,1);
+          obj.yc_mpc_r = map.corners_r(curr_rc,2);
+          obj.xc_mpc_l = map.corners_l(curr_lc,1);
+          obj.yc_mpc_l = map.corners_l(curr_lc,2);
+          
+          corner_r.x = obj.xc_mpc_r;
+          corner_r.y = obj.yc_mpc_r;
+          
           corner_l.x = obj.xc_mpc_l;
           corner_l.y = obj.yc_mpc_l;
+          
+          if ~map.isVisible(corner_r,obj)
+              obj.rc_active = false;
+          else
+              obj.rc_active = true;
+          end
           if dely_lc>0 && map.isVisible(corner_l,obj)
               curr_lc =  min(curr_lc + 1,size(map.corners_l,1));
               obj.lc_active = false;
           elseif map.isVisible(corner_l,obj)%dely_lc > -obj.maxRad
               obj.lc_active = true;
           end
-          obj.xc_mpc_r = map.corners_r(curr_rc,1);
-          obj.yc_mpc_r = map.corners_r(curr_rc,2);
-          obj.xc_mpc_l = map.corners_l(curr_lc,1);
-          obj.yc_mpc_l = map.corners_l(curr_lc,2);
           obj.M_mpc = map.Ms_mpc{curr_rc};
           obj.current_owall = map.walls_mpc(curr_rc);
+          obj.next_owall = map.walls_mpc(min(curr_rc+1,length(map.walls_mpc)));
        end
        function getcorner_WP(obj,map)
            persistent curr_c; % current corner index
@@ -345,6 +363,12 @@ classdef point_2 < handle
               yc_l = 0;
            end
            
+           if obj.rc_active
+              perc_r_weight = 10000000; 
+           else
+              perc_r_weight = 5;
+           end
+           
            % If projected motion doesn't reach corner, don't set slope
            % constraint
            try
@@ -383,7 +407,7 @@ classdef point_2 < handle
            obj.MPCinput.yN = [xg yg var_des var_des];
            
            % x, y, perception right, perception left, ax_dot, ay_dot, epsilon
-           A = diag([50 500 5 perc_l_weight 250 250 50000000]);
+           A = diag([50 500 perc_r_weight perc_l_weight 250 250 50000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
