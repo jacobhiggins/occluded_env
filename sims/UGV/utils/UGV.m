@@ -591,7 +591,7 @@ classdef UGV < handle
 %                ];
            
            % x, y, phi_right, vx, vy, epsilon
-           A = diag([10 50 perc_r_weight 100 1 1000000]);
+           A = diag([10 50 perc_r_weight 10 1 1000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;

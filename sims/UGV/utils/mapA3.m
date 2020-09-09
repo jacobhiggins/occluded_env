@@ -2,7 +2,7 @@
 % Reflects real dimensions of the jackal/lab arena layout
 classdef mapA3 < map
     properties
-       hls = [5.4-0.235,4-0.235];
+       hls = [5.4-0.235,15]; % hw2 used to be 4-0.235
        hws = [2.5,2.5];
     end
     methods
@@ -141,11 +141,11 @@ classdef mapA3 < map
                 obj.walls_mpc = [obj.walls_mpc -30 -1*(obj.hws(2)-obs.w)];
             end
             % Corner at end of 2nd hallway
-%             obj.walls_mpc = [obj.walls_mpc -obj.hws(2)];
-%             obj.corners_r = [obj.corners_r;obj.hls(2)-obj.hws(3),obj.hls(1)-obj.hws(2),1];
-%             obj.Ms_mpc = cat(2,obj.Ms_mpc,[0,-1;1,0]);
-%             
-%             obj.corners_l = [obj.corners_l;obj.hls(2)-obj.hws(3),obj.hls(1)];
+            obj.walls_mpc = [obj.walls_mpc -obj.hws(2)];
+            obj.corners_r = [obj.corners_r;obj.hls(2),obj.hls(1)-obj.hws(2),1];
+            obj.Ms_mpc = cat(2,obj.Ms_mpc,[0,-1;1,0]);
+            
+            obj.corners_l = [obj.corners_l;obj.hls(2),obj.hls(1)];
 %             
 %             % Corner at end of last hallway
 %             obj.walls_mpc = [obj.walls_mpc -obj.hws(3)];
