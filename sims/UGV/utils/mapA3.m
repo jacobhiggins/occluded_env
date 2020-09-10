@@ -2,7 +2,7 @@
 % Reflects real dimensions of the jackal/lab arena layout
 classdef mapA3 < map
     properties
-       hls = [5.4-0.235,15]; % hw2 used to be 4-0.235
+       hls = [10,10]; % hw1 used to be 5.4-0.235, hw2 used to be 4-0.235
        hws = [2.5,2.5];
     end
     methods
@@ -14,7 +14,7 @@ classdef mapA3 < map
            obj.sections = cell(1,obj.num_secs);
            % Starting pose
            obj.pose_start.x = obj.hws(1)*0.5;
-           obj.pose_start.y = 1;
+           obj.pose_start.y = 0.0;
            % Set section orientations
            obj.sections{1} = eye(2);
            obj.sections{2} = [0,1;1,0];
@@ -53,7 +53,7 @@ classdef mapA3 < map
            % Set patches of probabilities
            obj.set_patches();
            % Suggested maximum waypoint radius
-           obj.maxRad_suggest = 1.5;
+           obj.maxRad_suggest = 5;
         end
         function set_wypt_base(obj)
             % Waypoint bases, n x 2
@@ -75,8 +75,8 @@ classdef mapA3 < map
                 y2 = (y2+(obj.hls(1) + obj.hws(2)*(avoid1-1)/2))/2;
                 obj.wypt_bases = [obj.wypt_bases;x1,y1;x2,y2];
             end
-            obj.wypt_bases = [obj.wypt_bases;obj.hls(2),max(obj.hls(1)-obj.hws(2)/2,obj.wypt_bases(end,2))];
-%             obj.wypt_bases = [obj.wypt_bases;obj.hls(2)-obj.hws(3)/2,0];
+            obj.wypt_bases = [obj.wypt_bases;obj.hls(2)+100,max(obj.hls(1)-obj.hws(2)/2,obj.wypt_bases(end,2))];
+            obj.wypt_bases = [obj.wypt_bases;obj.hls(2)+100,obj.hls(1)-obj.hws(2)/2];
         end
         function wypt_bases = get_wypt_bases(obj)
             wypt_bases = obj.wypt_bases;
@@ -142,7 +142,7 @@ classdef mapA3 < map
             end
             % Corner at end of 2nd hallway
             obj.walls_mpc = [obj.walls_mpc -obj.hws(2)];
-            obj.corners_r = [obj.corners_r;obj.hls(2),obj.hls(1)-obj.hws(2),1];
+            obj.corners_r = [obj.corners_r;obj.hls(2)+100,obj.hls(1)-obj.hws(2),1];
             obj.Ms_mpc = cat(2,obj.Ms_mpc,[0,-1;1,0]);
             
             obj.corners_l = [obj.corners_l;obj.hls(2),obj.hls(1)];
@@ -159,13 +159,13 @@ classdef mapA3 < map
             obj.patches.xend = obj.hls(2);
             obj.patches.ybottom = obj.hls(1)-obj.hws(2);
             obj.patches.ytop = obj.hls(1);
-            obj.patches.probs = 1.0*ones(1,obj.patches.num);
+            obj.patches.probs = 0.5*ones(1,obj.patches.num);
             obj.patches.width = (obj.patches.xend - obj.patches.xstart)/obj.patches.num;
             obj.patches.centers = [(obj.patches.width)*(0:obj.patches.num-1)+obj.patches.width/2+obj.patches.xstart;...
                 ((obj.patches.ytop+obj.patches.ybottom)/2)*ones(1,obj.patches.num)];
         end
         function check_flag(obj,p)
-            if p.y < obj.hls(1)/2 && p.x > obj.hws(1)
+            if p.y > obj.hls(1)/2 && p.x > obj.hls(2)
                obj.end_flag = false; 
             end
         end

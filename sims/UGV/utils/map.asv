@@ -442,8 +442,8 @@ classdef map < handle
             p_z1_m0 = 1 - p_z1_m1;
             p_z0_m0 = 0.9;
             p_z0_m1 = 1 - p_z0_m0;
-            p_move = 0.5;
-            p_stay = 0.5;
+            p_move = 0.1;
+            p_stay = 0.9;
             % Update probs based on measurement
             for i = 1:obj.patches.num
                if norm([p.x-obj.patches.centers(1,i),p.y-obj.patches.centers(2,i)]) < p.r
@@ -451,7 +451,7 @@ classdef map < handle
                end
             end
             % Project into the future
-            for t = p.dt:p.dt:max(obj.patches.centers(2,1)-p.y,0)/p.vy
+            for t = p.dt:p.dt:p.y/p.vy
                 for i = 1:obj.patches.num-1
                     obj.patches.probs(i) = p_move*obj.patches.probs(i+1) + p_stay*obj.patches.probs(i);
                 end

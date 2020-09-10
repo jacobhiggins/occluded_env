@@ -161,7 +161,7 @@ classdef UGV < handle
 %            M = Ms{curr_c};
 %            flip = corners_r(curr_c,3);
            obj.current_sec = curr_c;
-           if obj.current_sec == size(map.corners_r,1)
+           if obj.current_sec == length(map.corners_r)
                obj.last_sec = true;
            end
 
@@ -242,9 +242,6 @@ classdef UGV < handle
        end
        function set_radius(obj,xm2,ym2,theta2,dist_frac)
            r = obj.maxRad;
-           if(obj.last_sec)
-              return 
-           end
            theta = atan2(obj.yc_wp-obj.y,obj.xc_wp-obj.x);
            if theta ~= theta2
                A = [cos(theta),-cos(theta2);...
@@ -257,14 +254,13 @@ classdef UGV < handle
 %                        r = min(obj.r + obj.maxRad/50,r);
                         r = obj.maxRad;
                    else
-%                        r = obj.r + obj.maxRad/50;
-                       r = obj.maxRad;
+                       r = obj.r + obj.maxRad/50;
+                       r = ob
                    end
                end
                r = min(dist_frac*obj.maxRad,r);
                if r > obj.maxRad
-%                    r = min(obj.r + obj.maxRad/50,obj.maxRad);
-                    r = obj.maxRad;
+                   r = min(obj.r + obj.maxRad/50,obj.maxRad);
                end
            end
            obj.r = r;
