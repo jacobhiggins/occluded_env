@@ -1,6 +1,6 @@
 function simulation()
     % Load map
-    map = mapA();
+    map = mapA3();
 %     map = mapB();
     map.setParams();
     map.show_cornerWP = false;
@@ -32,6 +32,7 @@ function simulation()
         p.mpc_step2(); % 2 corners
         % Using inputs, step in simulation
         p.motion_step();
+        map.update_probs(p);
         % Update plots
         map.update_plot(p);
         % Check map's end condition

@@ -198,6 +198,52 @@ classdef point_2 < handle
                c_base = c_base + 1;
            end
        end
+       function scale_wypt(obj,map)
+           num_points = 25;
+           del_x = abs(obj.x - obj.wypt.x);
+           del_y = abs(obj.y - obj.wypt.y);
+           xs_probe = obj.x:del_x/num_points:obj.wypt.x;
+           ys_probe = obj.y:del_y/num_points:obj.wypt.y;
+           x_avg = 0.0;
+           y_avg = 0.0;
+           prob_product = 1;
+           for i = 1:num_points
+               % Get probe x-y position
+               if isempty(xs_probe)
+                   x_probe = obj.x;
+               else
+                   x_probe = xs_probe(i);
+               end
+               if isempty(ys_probe)
+                   y_probe = obj.y;
+               else
+                   y_probe = ys_probe(i);
+               end
+               % Get index of probability that is closest to that position
+               shifted_centers = abs(map.patches.centers - [x_probe;y_probe]);
+               is = logical(shifted_centers(1,:) <= map.patches.width/2).*logical(shifted_centers(2,:) <= map.hws(2)/2);
+               prob = map.patches.probs(logical(is));
+               if ~isempty(prob)
+                   prob = prob(1);
+               else
+                   prob = 1;
+               end
+               if i < num_points
+                   x_avg = x_avg + x_probe*prob_product*(1-prob);
+                   y_avg = y_avg + y_probe*prob_product*(1-prob);
+               else
+                   x_avg = x_avg + x_probe*prob_product;
+                   y_avg = y_avg + y_probe*prob_product;
+               end
+               prob_product = prob_product*prob;
+           end
+           % Using dist + theta (instead of exact point) ensures
+           % the waypoint is always in the right direction
+           dist = norm([x_avg;y_avg]-[obj.x;obj.y]);
+           theta = atan2(obj.wypt.y - obj.y,obj.wypt.x - obj.x);
+           obj.wypt.x = obj.x + dist*cos(theta);
+           obj.wypt.y = obj.y + dist*sin(theta);
+       end
        function set_radius(obj,xm2,ym2,theta2,dist_frac)
            r = obj.maxRad;
            theta = atan2(obj.yc_wp-obj.y,obj.xc_wp-obj.x);
@@ -364,7 +410,7 @@ classdef point_2 < handle
            end
            
            if obj.rc_active
-              perc_r_weight = 10000000; 
+              perc_r_weight = 5; %10000000; 
            else
               perc_r_weight = 5;
            end

@@ -56,17 +56,6 @@ CMAKE_BINARY_DIR = /mnt/c/Users/bezzo/Documents/GitHub/occluded_env/acado_code/b
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target edit_cache
-edit_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
-	/usr/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
-.PHONY : edit_cache
-
-# Special rule for the target edit_cache
-edit_cache/fast: edit_cache
-
-.PHONY : edit_cache/fast
-
 # Special rule for the target rebuild_cache
 rebuild_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
@@ -77,6 +66,17 @@ rebuild_cache:
 rebuild_cache/fast: rebuild_cache
 
 .PHONY : rebuild_cache/fast
+
+# Special rule for the target edit_cache
+edit_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
+	/usr/bin/cmake -E echo No\ interactive\ CMake\ dialog\ available.
+.PHONY : edit_cache
+
+# Special rule for the target edit_cache
+edit_cache/fast: edit_cache
+
+.PHONY : edit_cache/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -124,44 +124,44 @@ vel_cmd/fast:
 .PHONY : vel_cmd/fast
 
 #=============================================================================
-# Target rules for targets named DD_cmd
+# Target rules for targets named point_mass7
 
 # Build rule for target.
-DD_cmd: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 DD_cmd
-.PHONY : DD_cmd
+point_mass7: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 point_mass7
+.PHONY : point_mass7
 
 # fast build rule for target.
-DD_cmd/fast:
-	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/build
-.PHONY : DD_cmd/fast
+point_mass7/fast:
+	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/build
+.PHONY : point_mass7/fast
 
-DD_cmd.o: DD_cmd.cpp.o
+point_mass7.o: point_mass7.cpp.o
 
-.PHONY : DD_cmd.o
+.PHONY : point_mass7.o
 
 # target to build an object file
-DD_cmd.cpp.o:
-	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/DD_cmd.cpp.o
-.PHONY : DD_cmd.cpp.o
+point_mass7.cpp.o:
+	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/point_mass7.cpp.o
+.PHONY : point_mass7.cpp.o
 
-DD_cmd.i: DD_cmd.cpp.i
+point_mass7.i: point_mass7.cpp.i
 
-.PHONY : DD_cmd.i
+.PHONY : point_mass7.i
 
 # target to preprocess a source file
-DD_cmd.cpp.i:
-	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/DD_cmd.cpp.i
-.PHONY : DD_cmd.cpp.i
+point_mass7.cpp.i:
+	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/point_mass7.cpp.i
+.PHONY : point_mass7.cpp.i
 
-DD_cmd.s: DD_cmd.cpp.s
+point_mass7.s: point_mass7.cpp.s
 
-.PHONY : DD_cmd.s
+.PHONY : point_mass7.s
 
 # target to generate assembly for a file
-DD_cmd.cpp.s:
-	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/DD_cmd.cpp.s
-.PHONY : DD_cmd.cpp.s
+point_mass7.cpp.s:
+	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/point_mass7.cpp.s
+.PHONY : point_mass7.cpp.s
 
 vel_cmd.o: vel_cmd.cpp.o
 
@@ -196,13 +196,13 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
+	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... vel_cmd"
-	@echo "... rebuild_cache"
-	@echo "... DD_cmd"
-	@echo "... DD_cmd.o"
-	@echo "... DD_cmd.i"
-	@echo "... DD_cmd.s"
+	@echo "... point_mass7"
+	@echo "... point_mass7.o"
+	@echo "... point_mass7.i"
+	@echo "... point_mass7.s"
 	@echo "... vel_cmd.o"
 	@echo "... vel_cmd.i"
 	@echo "... vel_cmd.s"

@@ -52,7 +52,17 @@ classdef UGV < handle
       MPCoutput = struc('x',[],'u',[]);
       large_num = 100000;
       ku = struct("areas",[0.0]);
-      debug = struct("xrs",[],"vxs",[],"vys",[],"x_accs",[],"x_jerks",[],"vx_cmds",[],"vy_cmds",[],"v_cmds",[],"e_thetas",[],"w_cmds",[],"is_true",false);
+      debug = struct("xrs",[],...
+          "vxs",[],...
+          "vys",[],...
+          "x_accs",[],...
+          "x_jerks",[],...
+          "vx_cmds",[],...
+          "vy_cmds",[],...
+          "v_cmds",[],...
+          "e_thetas",[],...
+          "w_cmds",[],...
+          "is_true",false);
    end
    methods
        function setParams(obj,map)
@@ -226,10 +236,10 @@ classdef UGV < handle
            end
            % NEW CODE, 09/02/2020
            %Moving waypoint to edge of FOV
-           del_vec = [waypoint.x - obj.x;waypoint.y - obj.y];
-           del_vec = obj.maxRad*del_vec/norm(del_vec,2);
-           obj.wypt.x = obj.x + del_vec(1);
-           obj.wypt.y = obj.y + del_vec(2);
+%            del_vec = [waypoint.x - obj.x;waypoint.y - obj.y];
+%            del_vec = obj.maxRad*del_vec/norm(del_vec,2);
+%            obj.wypt.x = obj.x + del_vec(1);
+%            obj.wypt.y = obj.y + del_vec(2);
            % NEW CODE, 09/02/2020
        end
        function get_wypt2(obj,map)
@@ -239,6 +249,52 @@ classdef UGV < handle
            waypoint.y = obj.x + obj.maxRad*cos(theta);
            waypoint.x = obj.y + obj.maxRad*sin(theta);
            obj.wypt = waypoint;
+       end
+       function scale_wypt(obj,map)
+           num_points = 25;
+           del_x = abs(obj.x - obj.wypt.x);
+           del_y = abs(obj.y - obj.wypt.y);
+           xs_probe = obj.x:del_x/num_points:obj.wypt.x;
+           ys_probe = obj.y:del_y/num_points:obj.wypt.y;
+           x_avg = 0.0;
+           y_avg = 0.0;
+           prob_product = 1;
+           for i = 1:num_points
+               % Get probe x-y position
+               if isempty(xs_probe)
+                   x_probe = obj.x;
+               else
+                   x_probe = xs_probe(i);
+               end
+               if isempty(ys_probe)
+                   y_probe = obj.y;
+               else
+                   y_probe = ys_probe(i);
+               end
+               % Get index of probability that is closest to that position
+               shifted_centers = abs(map.patches.centers - [x_probe;y_probe]);
+               is = logical(shifted_centers(1,:) <= map.patches.width/2).*logical(shifted_centers(2,:) <= map.hws(2)/2);
+               prob = map.patches.probs(logical(is));
+               if ~isempty(prob)
+                   prob = prob(1);
+               else
+                   prob = 1;
+               end
+               if i < num_points
+                   x_avg = x_avg + x_probe*prob_product*(1-prob);
+                   y_avg = y_avg + y_probe*prob_product*(1-prob);
+               else
+                   x_avg = x_avg + x_probe*prob_product;
+                   y_avg = y_avg + y_probe*prob_product;
+               end
+               prob_product = prob_product*prob;
+           end
+           % Using dist + theta (instead of exact point) ensures
+           % the waypoint is always in the right direction
+           dist = norm([x_avg;y_avg]-[obj.x;obj.y]);
+           theta = atan2(obj.wypt.y - obj.y,obj.wypt.x - obj.x);
+           obj.wypt.x = obj.x + dist*cos(theta);
+           obj.wypt.y = obj.y + dist*sin(theta);
        end
        function set_radius(obj,xm2,ym2,theta2,dist_frac)
            r = obj.maxRad;
@@ -607,7 +663,7 @@ classdef UGV < handle
 %                ];
            
            % x, y, phi_right, vx, vy, epsilon
-           A = diag([10 50 perc_r_weight 10 1 1000000]);
+           A = diag([10 50 perc_r_weight 10 1 1]);
 %            A = diag([500 50 perc_r_weight 10 1 1000000]);
            
 %            if obj.current_sec==3

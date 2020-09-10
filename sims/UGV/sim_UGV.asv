@@ -4,9 +4,8 @@ function sim_UGV()
 %     map = mapA1();
     map = mapA3();
     map.setParams();
-    map.show_cornerMPC = false;
+%     map.show_cornerMPC = false;
     map.show_cornerWP = false;
-    map.show_knownunknown = false;
     
     robot = jackal();
     robot.setParams(map);
@@ -27,8 +26,7 @@ function sim_UGV()
         robot.getcorner_WP(map);
         % Get waypoint for robot
         robot.get_wypt(map);
-        % Scale waypoint for safety constraint
-        robot.scale_wypt(map);
+        
         % Compute MPC commanded inputs
 %         robot.mpc_step2();
 %         robot.test_step();

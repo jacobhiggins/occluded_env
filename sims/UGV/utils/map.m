@@ -219,6 +219,7 @@ classdef map < handle
             obj.plt_p.YData = p.y;
             % Update waypoint position
             p.get_wypt(obj);
+            p.scale_wypt(obj);
             obj.plt_wypt.XData = p.wypt.x;
             obj.plt_wypt.YData = p.wypt.y;
             % Update patches
@@ -451,9 +452,11 @@ classdef map < handle
                end
             end
             % Project into the future
-            for t = p.dt:p.dt:max(obj.patches.centers(2,1)-p.y,0)/p.vy
-                for i = 1:obj.patches.num-1
-                    obj.patches.probs(i) = p_move*obj.patches.probs(i+1) + p_stay*obj.patches.probs(i);
+            if abs(obj.patches.centers(2,1)-p.y) > obj.hws(2)/2 % If far enough away
+                for t = p.dt:p.dt:max(obj.patches.centers(2,1)-p.y,0)/p.vy
+                    for i = 1:obj.patches.num-1
+                        obj.patches.probs(i) = p_move*obj.patches.probs(i+1) + p_stay*obj.patches.probs(i);
+                    end
                 end
             end
         end

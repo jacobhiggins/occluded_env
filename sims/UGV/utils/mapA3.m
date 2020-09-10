@@ -2,7 +2,7 @@
 % Reflects real dimensions of the jackal/lab arena layout
 classdef mapA3 < map
     properties
-       hls = [10,10]; % hw1 used to be 5.4-0.235, hw2 used to be 4-0.235
+       hls = [10,20]; % hw1 used to be 5.4-0.235, hw2 used to be 4-0.235
        hws = [2.5,2.5];
     end
     methods
