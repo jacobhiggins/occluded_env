@@ -2,7 +2,7 @@
 % Reflects real dimensions of the jackal/lab arena layout
 classdef mapA3 < map
     properties
-       hls = [10,20]; % hw1 used to be 5.4-0.235, hw2 used to be 4-0.235
+       hls = [10,10]; % hw1 used to be 5.4-0.235, hw2 used to be 4-0.235
        hws = [2.5,2.5];
     end
     methods
@@ -121,7 +121,7 @@ classdef mapA3 < map
 %             M3 = -1*eye(2);
             M4 = [0,1;1,0];
             obj.Ms_mpc = {eye(2)};
-            obj.walls_mpc = [-1*obj.hws(1)+1];
+            obj.walls_mpc = [-1*obj.hws(1)+0.01];
             for i = 1:length(obj.obss)
                 obs = obj.obss{i};
                 avoid1 = obs.avoid; % +1 = move left to avoid, -1 = move right to avoid

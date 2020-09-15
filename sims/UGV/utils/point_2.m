@@ -10,6 +10,7 @@ classdef point_2 < handle
       lc_active = false;
       xc_wp
       yc_wp
+      last_sec
       wypt = struc('x',[],'y',[]);
       M_mpc
       flip
@@ -59,6 +60,7 @@ classdef point_2 < handle
            obj.yc_mpc_l = obj.yc_mpc_r;
            obj.xc_wp = map.corners_r(1,1);
            obj.yc_wp = map.corners_r(1,2);
+           obj.last_sec = false;
            obj.wypt.x = obj.x;
            obj.wypt.y = obj.y + obj.maxRad;
            obj.MPCinput.u = zeros(obj.N,obj.Nu);
@@ -137,6 +139,9 @@ classdef point_2 < handle
 %            M = Ms{curr_c};
 %            flip = corners_r(curr_c,3);
            obj.current_sec = curr_c;
+           if obj.current_sec == size(map.corners_r,1)
+               obj.last_sec = true;
+           end
 
        end
        function get_wypt(obj,map)
@@ -197,6 +202,7 @@ classdef point_2 < handle
            if norm([obj.x-next_wpb(1),obj.y-next_wpb(2)],2) < obj.r
                c_base = c_base + 1;
            end
+           obj.scale_wypt(map);
        end
        function scale_wypt(obj,map)
            num_points = 25;
@@ -246,6 +252,9 @@ classdef point_2 < handle
        end
        function set_radius(obj,xm2,ym2,theta2,dist_frac)
            r = obj.maxRad;
+           if(obj.last_sec)
+              return 
+           end
            theta = atan2(obj.yc_wp-obj.y,obj.xc_wp-obj.x);
            if theta ~= theta2
                A = [cos(theta),-cos(theta2);...
@@ -398,8 +407,13 @@ classdef point_2 < handle
            phi_l_y = phi_l/yr;
            
            % Position Constraints
-           m_r_inv = 1/m_r;
-           m_l_inv = 1/m_l;
+           if ~obj.last_sec
+               m_r_inv = 1/m_r;
+               m_l_inv = 1/m_l;
+           else
+               m_r_inv = 0;
+               m_l_inv = 0;
+           end
            
            if obj.lc_active
               perc_l_weight = 5; 
@@ -410,9 +424,9 @@ classdef point_2 < handle
            end
            
            if obj.rc_active
-              perc_r_weight = 5; %10000000; 
+              perc_r_weight = 500; %10000000; 
            else
-              perc_r_weight = 5;
+              perc_r_weight = 0.5;
            end
            
            % If projected motion doesn't reach corner, don't set slope
@@ -453,13 +467,18 @@ classdef point_2 < handle
            obj.MPCinput.yN = [xg yg var_des var_des];
            
            % x, y, perception right, perception left, ax_dot, ay_dot, epsilon
-           A = diag([50 500 perc_r_weight perc_l_weight 250 250 50000000]);
+           A = diag([5 50 perc_r_weight perc_l_weight 10 10 50000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
 %            end
            
            obj.MPCinput.W = repmat(A,obj.N,1);
+%            A_total = [];
+%            for i= 1:obj.N
+%               A_total = [A_total;diag([A(1,1),A(2,2)^(1+i*0.001),A(3,3),A(4,4),A(5,5),A(6,6),A(7,7)])]; 
+%            end
+%            obj.MPCinput.W = A_total;
            obj.MPCinput.WN = diag([A(1,1) A(2,2) A(3,3) A(4,4)]);
            
            obj.MPCoutput = acado_solver7( obj.MPCinput );
@@ -479,6 +498,8 @@ classdef point_2 < handle
            
        end
        function motion_step(obj)
+           obj.vx = max(min(obj.vx,2),-2);
+           obj.vy = max(min(obj.vy,2),-2);
            instate = [obj.x obj.y obj.vx obj.vy obj.cmd_input.x obj.cmd_input.y]';
            [t,outstate] = ode45(@(t,x) obj.EOM(t,x), [obj.t,obj.t+obj.dt], instate);
            obj.x = outstate(end,1);

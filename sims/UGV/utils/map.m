@@ -219,7 +219,7 @@ classdef map < handle
             obj.plt_p.YData = p.y;
             % Update waypoint position
             p.get_wypt(obj);
-            p.scale_wypt(obj);
+%             p.scale_wypt(obj);
             obj.plt_wypt.XData = p.wypt.x;
             obj.plt_wypt.YData = p.wypt.y;
             % Update patches
@@ -338,13 +338,17 @@ classdef map < handle
             grid on;
             ylabel("Velocity (m/s)","LineWidth",2);
             subplot(2,1,2);
+            yyaxis left;
             plot(ts,LOSs);
-            grid on;
             ylabel("Line of Sight (m)","LineWidth",2);
+            yyaxis right;
+            plot(ts,p.ku.areas);
+            ylabel("Known-Unknown Area (m^2)");
             xlabel("Time (s)");
             post_data.vs = vs;
             post_data.ts = ts;
             post_data.LOSs = LOSs;
+            post_data.ku = p.ku.areas;
             assignin('base','post_data',post_data);
         end
         function isVis = isVisible(obj,corner,p)
@@ -443,12 +447,16 @@ classdef map < handle
             p_z1_m0 = 1 - p_z1_m1;
             p_z0_m0 = 0.9;
             p_z0_m1 = 1 - p_z0_m0;
-            p_move = 0.5;
-            p_stay = 0.5;
+            p_move = 0.25;
+            p_stay = 1 - p_move;
             % Update probs based on measurement
             for i = 1:obj.patches.num
                if norm([p.x-obj.patches.centers(1,i),p.y-obj.patches.centers(2,i)]) < p.r
-                  obj.patches.probs(i) = p_z0_m0*obj.patches.probs(i)/(p_z0_m0*obj.patches.probs(i) + p_z0_m1*(1-obj.patches.probs(i)));
+                  if rand < p_z0_m0
+                      obj.patches.probs(i) = p_z0_m0*obj.patches.probs(i)/(p_z0_m0*obj.patches.probs(i) + p_z0_m1*(1-obj.patches.probs(i)));
+                  else
+                      obj.patches.probs(i) = p_z1_m0*obj.patches.probs(i)/(p_z1_m0*obj.patches.probs(i) + p_z1_m1*(1-obj.patches.probs(i)));
+                  end
                end
             end
             % Project into the future

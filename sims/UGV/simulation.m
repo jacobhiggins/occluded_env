@@ -3,7 +3,9 @@ function simulation()
     map = mapA3();
 %     map = mapB();
     map.setParams();
+    map.show_cornerMPC = false;
     map.show_cornerWP = false;
+    map.show_knownunknown = true;
     map.show_heading = false;
     
     % Initialize point

@@ -33,7 +33,7 @@ end
 %% Process data
 is = abs(data.ku)>0.0001;
 data.ku = data.ku(is);
-data.po = data.po(is);
+data.po = log(data.po(is));
 data.x = data.x(is);
 data.y = data.y(is);
 
@@ -46,8 +46,11 @@ cmap = winter(num_data);
 
 close all;
 figure(1);
+subplot(1,2,2);
 scatter(data.ku(1:num_data),data.po(1:num_data),8,cmap(1:num_data,:),"filled");
-figure(2);
+xlabel("Known-Unknown Area (m)");
+ylabel("Perc. Obj. Value");
+subplot(1,2,1);
 gray = 0.5*ones(1,3);
 hold on;
 patch([0 hw2 hw2 0],[-hl1 -hl1 0 0],gray);
@@ -55,3 +58,5 @@ scatter(data.x(1:num_data),data.y(1:num_data),5,cmap(1:num_data,:),"filled");
 axis equal;
 xlim([-hw1 hw2]);
 ylim([-hl1 hw2]);
+xlabel("X pos (m)");
+ylabel("Y pos (m)");

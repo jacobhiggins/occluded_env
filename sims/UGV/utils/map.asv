@@ -219,7 +219,7 @@ classdef map < handle
             obj.plt_p.YData = p.y;
             % Update waypoint position
             p.get_wypt(obj);
-            p.scale_wypt(obj);
+%             p.scale_wypt(obj);
             obj.plt_wypt.XData = p.wypt.x;
             obj.plt_wypt.YData = p.wypt.y;
             % Update patches
@@ -345,6 +345,7 @@ classdef map < handle
             post_data.vs = vs;
             post_data.ts = ts;
             post_data.LOSs = LOSs;
+            post_data.
             assignin('base','post_data',post_data);
         end
         function isVis = isVisible(obj,corner,p)
@@ -444,20 +445,24 @@ classdef map < handle
             p_z0_m0 = 0.9;
             p_z0_m1 = 1 - p_z0_m0;
             p_move = 0.5;
-            p_stay = 0.5;
+            p_stay = 1 - p_move;
             % Update probs based on measurement
             for i = 1:obj.patches.num
                if norm([p.x-obj.patches.centers(1,i),p.y-obj.patches.centers(2,i)]) < p.r
-                  obj.patches.probs(i) = p_z0_m0*obj.patches.probs(i)/(p_z0_m0*obj.patches.probs(i) + p_z0_m1*(1-obj.patches.probs(i)));
+                  if rand < p_z0_m0
+                      obj.patches.probs(i) = p_z0_m0*obj.patches.probs(i)/(p_z0_m0*obj.patches.probs(i) + p_z0_m1*(1-obj.patches.probs(i)));
+                  else
+                      obj.patches.probs(i) = p_z1_m0*obj.patches.probs(i)/(p_z1_m0*obj.patches.probs(i) + p_z1_m1*(1-obj.patches.probs(i)));
+                  end
                end
             end
             % Project into the future
-            if obj.patches.centers(2,1)-p.y
-            for t = p.dt:p.dt:max(obj.patches.centers(2,1)-p.y,0)/p.vy
-                for i = 1:obj.patches.num-1
-                    obj.patches.probs(i) = p_move*obj.patches.probs(i+1) + p_stay*obj.patches.probs(i);
+            if abs(obj.patches.centers(2,1)-p.y) > obj.hws(2)/2 % If far enough away
+                for t = p.dt:p.dt:max(obj.patches.centers(2,1)-p.y,0)/p.vy
+                    for i = 1:obj.patches.num-1
+                        obj.patches.probs(i) = p_move*obj.patches.probs(i+1) + p_stay*obj.patches.probs(i);
+                    end
                 end
-            end
             end
         end
     end
