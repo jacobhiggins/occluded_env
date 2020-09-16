@@ -39,5 +39,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/vel_cmd.dir/DependInfo.cmake"
-  "CMakeFiles/DD_cmd.dir/DependInfo.cmake"
+  "CMakeFiles/point_mass7.dir/DependInfo.cmake"
   )

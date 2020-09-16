@@ -43,6 +43,7 @@ classdef jackal < UGV
            obj.maxRad = map.maxRad_suggest;
            obj.r = obj.maxRad;
            obj.getcorner_MPC(map);
+           obj.last_sec = false;
        end
    end
 end

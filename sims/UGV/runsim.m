@@ -12,7 +12,7 @@ clear all;
 warning('off','MATLAB:gui:array:InvalidArrayShape');
 
 %% Run sim
-% simulation();
-sim_UGV();
+simulation();
+% sim_UGV();
 % sim_collision();
 % sim_prob_collision();

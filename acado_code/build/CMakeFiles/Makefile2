@@ -97,39 +97,39 @@ clean: CMakeFiles/vel_cmd.dir/clean
 .PHONY : clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/DD_cmd.dir
+# Target rules for target CMakeFiles/point_mass7.dir
 
 # All Build rule for target.
-CMakeFiles/DD_cmd.dir/all:
-	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/depend
-	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/mnt/c/Users/bezzo/Documents/GitHub/occluded_env/acado_code/build/CMakeFiles --progress-num=1,2 "Built target DD_cmd"
-.PHONY : CMakeFiles/DD_cmd.dir/all
+CMakeFiles/point_mass7.dir/all:
+	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/depend
+	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --progress-dir=/mnt/c/Users/bezzo/Documents/GitHub/occluded_env/acado_code/build/CMakeFiles --progress-num=1,2 "Built target point_mass7"
+.PHONY : CMakeFiles/point_mass7.dir/all
 
 # Include target in all.
-all: CMakeFiles/DD_cmd.dir/all
+all: CMakeFiles/point_mass7.dir/all
 
 .PHONY : all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/DD_cmd.dir/rule: cmake_check_build_system
+CMakeFiles/point_mass7.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/bezzo/Documents/GitHub/occluded_env/acado_code/build/CMakeFiles 2
-	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/DD_cmd.dir/all
+	$(MAKE) -f CMakeFiles/Makefile2 CMakeFiles/point_mass7.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/bezzo/Documents/GitHub/occluded_env/acado_code/build/CMakeFiles 0
-.PHONY : CMakeFiles/DD_cmd.dir/rule
+.PHONY : CMakeFiles/point_mass7.dir/rule
 
 # Convenience name for target.
-DD_cmd: CMakeFiles/DD_cmd.dir/rule
+point_mass7: CMakeFiles/point_mass7.dir/rule
 
-.PHONY : DD_cmd
-
-# clean rule for target.
-CMakeFiles/DD_cmd.dir/clean:
-	$(MAKE) -f CMakeFiles/DD_cmd.dir/build.make CMakeFiles/DD_cmd.dir/clean
-.PHONY : CMakeFiles/DD_cmd.dir/clean
+.PHONY : point_mass7
 
 # clean rule for target.
-clean: CMakeFiles/DD_cmd.dir/clean
+CMakeFiles/point_mass7.dir/clean:
+	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/clean
+.PHONY : CMakeFiles/point_mass7.dir/clean
+
+# clean rule for target.
+clean: CMakeFiles/point_mass7.dir/clean
 
 .PHONY : clean
 
