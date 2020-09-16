@@ -1,73 +1,77 @@
 classdef jackal_real < handle
    properties
        R % wheel radius
-      L % body length
-      max_w % maximum wheel turn speed
-      dd % differential drive object
-      position = struct("x",0.0,"y",0.0);
-      theta
-      v % body frame linear vel
-      w % body frame angular vel
-      corner = struct("wypt",struct("x",0.0,"y",0.0),"mpc",struct("x",0.0,"y",0.0));
-      xc_mpc_r
-      yc_mpc_r
-      xc_mpc_l
-      yc_mpc_l
-      lc_active = false; % False when left corner is not visible
-      rc_active = false; % False when right corner is not visible
-      xc_wp
-      yc_wp
-      wypt = struc('x',[],'y',[]);
-      M_mpc = eye(2);
-      flip
-      vx
-      vy
-      ax
-      ay
-      max_v
-      max_omega
-      a_max
-      size
-      dt
-      t
-      r
-      rs = [0.0];
-      maxRad
-      trail = struct('x',[],'y',[]); % Motion trail
-      proj_mot = struct('x',[],'y',[]); % Projected motion
-      cmd_input = struct('x',[0.0],'y',[0.0],'v',[0.0],'omega',[0.0],'name',"Velocities");
-      cmd_inputs = struct('x',[0.0],'y',[0.0],'vs',[0.0],'omegas',[0.0]);
-      vs = struct('vxs',[0.0],'vys',[0.0],'speeds',[0.0],'ws',[0.0]);
-      LOSs = [];
-      ts = [0.0];
-      LOS = [0.0];
-      current_sec = 1; % current section that robot is in
-      current_owall = -100; % current outer wall distance from corner
-      next_owall = -100; % next hallway wall distance
-      % MPC vars
-      N = 50; % Control Horizon
-      Nu = 3; % Decision variables
-      MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
-      MPCoutput = struc('x',[],'u',[]);
-      large_num = 100000;
-      ku = struct("areas",[0.0]);
-      sub;
-      pub;
-      debug = struct("xrs",[],...
-          "vxs",[],...
-          "vys",[],...
-          "x_accs",[],...
-          "x_jerks",[],...
-          "vx_cmds",[],...
-          "vy_cmds",[],...
-          "v_cmds",[],...
-          "e_thetas",[],...
-          "w_cmds",[],...
-          "is_true",false);
+       L % body length
+       max_w % maximum wheel turn speed
+       dd % differential drive object
+       position = struct("x",0.0,"y",0.0);
+       vels = struct("v",0.0,"x",0.0,"y",0.0);
+       theta
+       v % body frame linear vel
+       w % body frame angular vel
+       corner = struct("wypt",struct("x",0.0,"y",0.0),"mpc",struct("x",0.0,"y",0.0));
+       xc_mpc_r
+       yc_mpc_r
+       xc_mpc_l
+       yc_mpc_l
+       lc_active = false; % False when left corner is not visible
+       rc_active = false; % False when right corner is not visible
+       xc_wp
+       yc_wp
+       wypt = struc('x',[],'y',[]);
+       M_mpc = eye(2);
+       flip
+       vx
+       vy
+       ax
+       ay
+       max_v
+       max_omega
+       a_max
+       size
+       dt
+       t
+       r
+       rs = [0.0];
+       maxRad
+       trail = struct('x',[],'y',[],'theta',[]); % Motion trail
+       proj_mot = struct('x',[],'y',[]); % Projected motion
+       proj_mots = [];
+       cmd_input = struct('x',[0.0],'y',[0.0],'v',[0.0],'omega',[0.0],'name',"Velocities");
+       cmd_inputs = struct('x',[0.0],'y',[0.0],'vs',[0.0],'omegas',[0.0]);
+       vs = struct('vxs',[0.0],'vys',[0.0],'speeds',[0.0],'ws',[0.0]);
+       LOSs = [];
+       ts = [0.0];
+       LOS = [0.0];
+       current_sec = 1; % current section that robot is in
+       current_owall = -100; % current outer wall distance from corner
+       next_owall = -100; % next hallway wall distance
+       % MPC vars
+       N = 50; % Control Horizon
+       Nu = 3; % Decision variables
+       MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
+       MPCoutput = struc('x',[],'u',[]);
+       large_num = 100000;
+       ku = struct("areas",[0.0]);
+       sub_pos;
+       sub_vel;
+       pub;
+       debug = struct("xrs",[],...
+           "vxs",[],...
+           "vys",[],...
+           "x_accs",[],...
+           "x_jerks",[],...
+           "vx_cmds",[],...
+           "vy_cmds",[],...
+           "v_cmds",[],...
+           "e_thetas",[],...
+           "w_cmds",[],...
+           "is_true",false);
    end
    methods
        function init_params(obj)
-           obj.sub = rossubscriber("/vicon/jackal3/jackal3");
+           obj.sub_pos = rossubscriber("/vicon/jackal3/jackal3");
+           obj.sub_vel = rossubscriber("/odometry/filtered");
            obj.pub = rospublisher("/jackal_velocity_controller/cmd_vel","geometry_msgs/Twist");
            obj.R = 0.075;
            obj.L = 0.42;
@@ -93,12 +97,35 @@ classdef jackal_real < handle
            obj.wypt.y = obj.position.y;
        end
        function get_pose(obj)
-           pos_msg = receive(obj.sub,1);
+           persistent old_pos;
+           if isempty(old_pos)
+              pos_msg = receive(obj.sub_pos,1);
+              old_pos.x = pos_msg.Transform.Translation.X;
+              old_pos.y = pos_msg.Transform.Translation.Y;
+              old_pos.t = pos_msg.Header.Stamp.Nsec;
+              pause(0.1);
+           end
+           pos_msg = receive(obj.sub_pos,1);
+%            vel_msg = receive(obj.sub_vel,1);
            obj.position.x = pos_msg.Transform.Translation.X;
            obj.position.y = pos_msg.Transform.Translation.Y;
+           obj.t = pos_msg.Header.Stamp.Nsec;
+           obj.vels.v = norm([obj.position.x-old_pos.x;obj.position.y-old_pos.y])/( (obj.t-old_pos.t)*10^-9);
+%            v = vel_msg.Twist.Twist.Linear.X;
+           q = [pos_msg.Transform.Rotation.W,...
+               pos_msg.Transform.Rotation.X,...
+               pos_msg.Transform.Rotation.Y,...
+               pos_msg.Transform.Rotation.Z];
+           R = quat2rotm(q);
+           obj.theta = -atan2(R(1,2),R(1,1)) + pi/2; %% Get correct angle from rotations
+           obj.theta = atan2(sin(obj.theta),cos(obj.theta)); %% Fit heading within [-pi,pi]
+           obj.vels.x = obj.vels.v*cos(obj.theta);
+           obj.vels.y = obj.vels.v*sin(obj.theta);
        end
        function get_wypt(obj,map)
-           obj.wypt.y = map.corner.y;
+%            obj.wypt.y = map.corner.y;
+            obj.wypt.x = 0;
+            obj.wypt.y = 0;
        end
        function get_corner(obj,map)
            obj.corner.mpc.x = map.corner.x;
@@ -128,8 +155,8 @@ classdef jackal_real < handle
            yc_l_in = 0;
            xg_in = obj.wypt.x;
            yg_in = obj.wypt.y;
-           vx_in = obj.cmd_input.x;
-           vy_in = obj.cmd_input.y;
+           vx_in = obj.vels.x;
+           vy_in = obj.vels.y;
            dt = obj.dt;
            
            [xr,yr] = c2u(xr_in,yr_in,xc_r_in,yc_r_in,obj.M_mpc);
@@ -151,16 +178,16 @@ classdef jackal_real < handle
            m_l_inv = 1/m_l;
            
            if obj.lc_active
-              perc_l_weight = 5; 
+              perc_l_weight = 0.0005; 
            else
               perc_l_weight = 5;
               xc_l = -50;
               yc_l = 0;
            end
            if obj.rc_active
-              perc_r_weight = 5; 
+              perc_r_weight = 0.0005; 
            else
-              perc_r_weight = 5;
+              perc_r_weight = 0.0005;
            end
            
            % If projected motion doesn't reach corner, don't set slope
@@ -211,7 +238,7 @@ classdef jackal_real < handle
 %                ];
            
            % x, y, phi_right, vx, vy, epsilon
-           A = diag([10 50 perc_r_weight 10 1 1000000]);
+           A = diag([50 50 perc_r_weight 10 1 1000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
@@ -275,8 +302,10 @@ classdef jackal_real < handle
        function rec_data(obj)
            obj.trail.x = [obj.trail.x obj.position.x];
            obj.trail.y = [obj.trail.y obj.position.y];
-           obj.vs.vxs = [obj.vs.vxs obj.vx];
-           obj.vs.vys = [obj.vs.vys obj.vy];
+           obj.trail.theta = [obj.trail.theta obj.theta];
+           obj.proj_mots = [obj.proj_mots obj.proj_mot];
+           obj.vs.vxs = [obj.vs.vxs obj.vels.x];
+           obj.vs.vys = [obj.vs.vys obj.vels.y];
            obj.vs.speeds = [obj.vs.speeds obj.v];
            obj.vs.ws = [obj.vs.ws obj.w];
            obj.cmd_inputs.x = [obj.cmd_inputs.x obj.cmd_input.x];
