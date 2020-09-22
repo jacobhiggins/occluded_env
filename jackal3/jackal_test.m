@@ -1,9 +1,12 @@
 %% Setup environment
 % Set ros master to jackal
 
+clear all;
+
 addpath('../robotsim/mathworks-robotics-mobile-robotics-simulation-toolbox-7066fa0/src/kinematics')
 addpath('../acado_code/point_mass_export7/')
 addpath('../acado_code/vel_export')
+addpath('./acado_code_jackal3/vel_jackal3_export');
 
 % Initialize ros in Matlab
 try
@@ -19,13 +22,21 @@ manual_drive = false;
 robot = jackal_real();
 robot.init_params();
 map = map_real();
-map.init_params();
+map.init_params(robot);
 
-total_time = 16.0;
+total_time = 20.0;
 tic;
-while toc < total_time
+while toc < total_time && ~map.stop
+%     pub_msg = rosmessage(robot.pub);
+%     pub_msg.Linear.X = 0.1;
+%     pub_msg.Angular.Z = 0.0;
+%     send(robot.pub,pub_msg);
+   % Check stop experiment
+   map.check_stop_experiment(robot);
    % Get position of jackal
    robot.get_pose();
+   % Get corners
+   robot.get_corner(map);
    % Get new waypoint position
    robot.get_wypt(map);
    % Find commanded mpc inputs
@@ -38,4 +49,8 @@ while toc < total_time
    end
 end
 
-save("robot.mat","robot");
+if ~manual_drive
+    robot.stop();
+end
+
+save("robot_experiment.mat","robot","map");

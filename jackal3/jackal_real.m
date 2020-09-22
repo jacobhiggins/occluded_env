@@ -10,6 +10,7 @@ classdef jackal_real < handle
        v % body frame linear vel
        w % body frame angular vel
        corner = struct("wypt",struct("x",0.0,"y",0.0),"mpc",struct("x",0.0,"y",0.0));
+       corner_hist = {};
        xc_mpc_r
        yc_mpc_r
        xc_mpc_l
@@ -19,6 +20,7 @@ classdef jackal_real < handle
        xc_wp
        yc_wp
        wypt = struc('x',[],'y',[]);
+       wypt_hist = {};
        M_mpc = eye(2);
        flip
        vx
@@ -31,6 +33,7 @@ classdef jackal_real < handle
        size
        dt
        t
+       FOV = struct("radius",0.0,"max_radius",0.0);
        r
        rs = [0.0];
        maxRad
@@ -55,6 +58,7 @@ classdef jackal_real < handle
        ku = struct("areas",[0.0]);
        sub_pos;
        sub_vel;
+       sub_joy;
        pub;
        debug = struct("xrs",[],...
            "vxs",[],...
@@ -67,16 +71,24 @@ classdef jackal_real < handle
            "e_thetas",[],...
            "w_cmds",[],...
            "is_true",false);
+       width = 0.43;
+       length = 0.508;
+       joy_buttons = [];
+       JOY_X = 1;
+       JOY_O = 2;
+       outlines;
+       last_sec = false;
    end
    methods
        function init_params(obj)
            obj.sub_pos = rossubscriber("/vicon/jackal3/jackal3");
            obj.sub_vel = rossubscriber("/odometry/filtered");
+           obj.sub_joy = rossubscriber("/bluetooth_teleop/joy");
            obj.pub = rospublisher("/jackal_velocity_controller/cmd_vel","geometry_msgs/Twist");
            obj.R = 0.075;
            obj.L = 0.42;
            obj.max_w = 26.667; % Max rotation for single wheel
-           obj.max_omega = 1.5; % Max angular rotation for heading
+           obj.max_omega = 1.0; % Max angular rotation for heading
            obj.max_v = 0.3;
            obj.size = 0.25; % m, max radius
            obj.dd = DifferentialDrive(obj.R,obj.L);
@@ -95,6 +107,12 @@ classdef jackal_real < handle
            obj.proj_mot.y = obj.position.y*ones(1,obj.N);
            obj.wypt.x = obj.position.x;
            obj.wypt.y = obj.position.y;
+           obj.r = 3;
+           obj.maxRad = 3;
+       end
+       function get_joy(obj)
+           joy_msg = receive(obj.sub_joy,1);
+           obj.joy_buttons = joy_msg.Buttons;
        end
        function get_pose(obj)
            persistent old_pos;
@@ -124,12 +142,129 @@ classdef jackal_real < handle
        end
        function get_wypt(obj,map)
 %            obj.wypt.y = map.corner.y;
-            obj.wypt.x = 0;
-            obj.wypt.y = 0;
+%             obj.wypt.x = obj.corner.mpc.x - 2.5/2;
+%             obj.wypt.y = 0;
+%             obj.wypt.x = 0.5;
+%             obj.wypt.y = 1;
+           persistent dists; % Distances between waypoints
+           persistent vecs; % vectors between waypoints
+           persistent c_base; % current waypoint base
+           if isempty(dists) || obj.t < 0.001
+               for i = 1:length(map.model_traj.wypt_bases.xs)-1
+                   wypta = [map.model_traj.wypt_bases.xs(i),...
+                       map.model_traj.wypt_bases.ys(i)];
+                   wyptb = [map.model_traj.wypt_bases.xs(i+1),...
+                       map.model_traj.wypt_bases.ys(i+1)];
+                   vec = wyptb - wypta;
+                   vec = vec/norm(vec,2);
+                   dists = [dists;norm(wypta-wyptb,2)];
+                   vecs = [vecs;vec];
+                   c_base = 1;
+               end
+           end
+           c_base = min(length(dists),c_base); % current waypoint index for circle
+           wpb = [map.model_traj.wypt_bases.xs(c_base);...
+               map.model_traj.wypt_bases.ys(c_base)]; % current waypoint index for radius
+           next_wpb = [map.model_traj.wypt_bases.xs(min(c_base+1,length(map.model_traj.wypt_bases.xs)));...
+               map.model_traj.wypt_bases.ys(min(c_base+1,length(map.model_traj.wypt_bases.xs)))]; % next waypoint for circle
+%            next_next_wpb = [map.model_traj.wypt_bases.xs(min(c_base+2,size(map.wypt_bases,1)));...
+%                map.model_traj.wypt_bases.ys(min(c_base+2,size(map.wypt_bases,1)))]; % next next waypoint for circle
+           vec = vecs(c_base,:); % vector between current and next waypoint for circle
+           m = vec(2)/vec(1); % slope of line bewteen current and next waypoint for circle
+           
+           % Determination of radius using appropriate waypoints
+           n = length(map.model_traj.wypt_bases.xs);
+           xm2 = map.model_traj.wypt_bases.xs(min(obj.current_sec+1,n)); % ALSO CHANGED
+           ym2 = map.model_traj.wypt_bases.ys(min(obj.current_sec+1,n));
+           xm3 = map.model_traj.wypt_bases.xs(min(obj.current_sec+2,n));
+           ym3 = map.model_traj.wypt_bases.ys(min(obj.current_sec+2,n));
+           theta2 = atan2(ym3-ym2,xm3-xm2);
+           
+           % Set radius using appropriate waypoints
+           obj.set_radius(xm2,ym2,theta2,1);
+           
+           [xis,yis] = linecirc(m,0,obj.position.x-wpb(1),obj.position.y-wpb(2),obj.r); % x's and y's where circle intersects line
+           tmp1 = -Inf;
+           % Pick point of intersection that has the highest dot product with vec
+           for i = 1:2
+               tmp = vec(1)*xis(i) + vec(2)*yis(i);
+               if tmp > tmp1
+                   xi = xis(i);
+                   yi = yis(i);
+                   tmp1 = tmp;
+               end
+           end
+           try
+               waypoint.x = xi + wpb(1);
+               waypoint.y = yi + wpb(2);
+               vec1 = [waypoint.x-obj.wypt.x;waypoint.y-obj.wypt.y];
+           catch
+               vec1 = -vec';
+           end
+           if vec*vec1 < 0
+               waypoint = obj.wypt;
+           end
+           obj.wypt = waypoint;
+           if norm([obj.position.x-next_wpb(1),obj.position.y-next_wpb(2)],2) < obj.r
+               c_base = c_base + 1;
+           end
+       end
+       function set_radius(obj,xm2,ym2,theta2,dist_frac)
+           r = obj.maxRad;
+           if(obj.position.y > 0) % TODO: fix bug in radius of 2nd hallway
+              return 
+           end
+           theta = atan2(obj.corner.mpc.y-obj.position.y,obj.corner.mpc.x-obj.position.x); % TODO: change mpc corner to wypt corner
+           if theta ~= theta2
+               A = [cos(theta),-cos(theta2);...
+                   sin(theta),-sin(theta2)];
+               b = [xm2-obj.position.x;ym2-obj.position.y];
+               vec = A\b;
+               r = vec(1);
+               if (r > obj.r && r < obj.maxRad) || r < 0
+                   if r > 0
+%                        r = min(obj.r + obj.maxRad/50,r);
+                        r = obj.maxRad;
+                   else
+%                        r = obj.r + obj.maxRad/50;
+                       r = obj.maxRad;
+                   end
+               end
+               r = min(obj.maxRad,r);
+               if r > obj.maxRad
+%                    r = min(obj.r + obj.maxRad/50,obj.maxRad);
+                    r = obj.maxRad;
+               end
+           end
+           obj.r = r;
        end
        function get_corner(obj,map)
-           obj.corner.mpc.x = map.corner.x;
-           obj.corner.mpc.y = map.corner.y;
+           persistent curr_rc;
+           if isempty(curr_rc)
+               curr_rc = 1;
+               obj.corner.mpc.x = map.geoms{curr_rc}.corner.x- max(obj.width,obj.length)/2;
+               obj.corner.mpc.y = map.geoms{curr_rc}.corner.y;
+               obj.M_mpc = map.geoms{curr_rc}.M_mpc;
+               obj.corner_hist{1} = obj.corner;
+           end
+           
+           obj.corner.mpc.x = map.geoms{curr_rc}.corner.x - max(obj.width,obj.length)/2;
+           obj.corner.mpc.y = map.geoms{curr_rc}.corner.y;
+           obj.M_mpc = map.geoms{curr_rc}.M_mpc;
+           
+           [~,dely_rc] = c2u(obj.position.x,obj.position.y,obj.corner.mpc.x,obj.corner.mpc.y,obj.M_mpc);
+%            [~,dely_lc] = c2u(obj.x,obj.y,obj.xc_mpc_l,obj.yc_mpc_l,M);
+           
+           if dely_rc > 0
+               curr_rc = min(curr_rc+1,length(map.geoms));
+               obj.corner.mpc.x = map.geoms{curr_rc}.corner.x - max(obj.width,obj.length)/2;
+               obj.corner.mpc.y = map.geoms{curr_rc}.corner.y;
+               obj.M_mpc = map.geoms{curr_rc}.M_mpc;
+               obj.corner_hist{curr_rc} = obj.corner
+           end
+%            
+%            obj.corner.mpc.x = obj.corner.mpc.x; % Prevent jackal from hitting wall
+%            obj.corner.mpc.y = obj.corner.mpc.y;
        end
        function pub_cmd(obj)
           persistent pub_msg;
@@ -184,11 +319,13 @@ classdef jackal_real < handle
               xc_l = -50;
               yc_l = 0;
            end
-           if obj.rc_active
-              perc_r_weight = 0.0005; 
-           else
-              perc_r_weight = 0.0005;
-           end
+%            if obj.rc_active
+%               perc_r_weight = 500; 
+%            else
+%               perc_r_weight = 0.0005;
+%            end
+           perc_r_weight = 0.00005;
+%            perc_r_weight = 50;
            
            % If projected motion doesn't reach corner, don't set slope
            % constraint
@@ -238,7 +375,7 @@ classdef jackal_real < handle
 %                ];
            
            % x, y, phi_right, vx, vy, epsilon
-           A = diag([50 50 perc_r_weight 10 1 1000000]);
+           A = diag([50 50 perc_r_weight 10 1 1000000]); % 1000000
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
@@ -247,7 +384,7 @@ classdef jackal_real < handle
            obj.MPCinput.W = repmat(A,obj.N,1);
            obj.MPCinput.WN = diag([A(1,1) A(2,2)]);% A(3,3) A(4,4)]);
            
-           obj.MPCoutput = acado_solver_vel_cmd( obj.MPCinput );
+           obj.MPCoutput = acado_solver_vel_cmd_jackal3( obj.MPCinput );
            us = obj.MPCoutput.u(1,:);
            vx_cmd = us(1);
            vy_cmd = us(2);
@@ -281,7 +418,7 @@ classdef jackal_real < handle
           w_cmd = Kw*e_theta + Kw_i*del_theta_int;
           w_cmd = min(max(w_cmd,-obj.max_omega),obj.max_omega);
           if obj.debug.is_true
-             obj.debug.v_cmds = [obj.debug.v_cmds;v_cmd];
+             obj.debug.v_cmds = [obj.debug.(-obj.width:0.05:obj.width);v_cmd];
              obj.debug.e_thetas = [obj.debug.e_thetas;e_theta];
              obj.debug.w_cmds = [obj.debug.w_cmds;w_cmd];
           end
@@ -314,6 +451,8 @@ classdef jackal_real < handle
            obj.cmd_inputs.omegas = [obj.cmd_inputs.omegas obj.cmd_input.omega];
            obj.rs = [obj.rs obj.r];
            obj.ts = [obj.ts obj.t];
+           obj.outlines{end+1} = obj.square_points();
+           obj.wypt_hist{end+1} = obj.wypt;
 %            obj.LOSs = [obj.LOSs obj.r];
        end
        function x_dot = EOM(obj,~,x)
@@ -322,6 +461,51 @@ classdef jackal_real < handle
            x_dot(2) = x(4);
            x_dot(3) = x(5);
            x_dot(4) = x(6);
+       end
+       function points = square_points(obj)
+           persistent local_points;
+           if isempty(local_points)
+               local_points = struct("x",[],"y",[]);
+               % Bottom edge
+               new_points_x = (-obj.width/2:0.01:obj.width/2);
+               new_points_y = -obj.length/2*ones(size(new_points_x));
+               local_points.x = [local_points.x new_points_x];
+               local_points.y = [local_points.y new_points_y];
+               % Right edge
+               new_points_y = -obj.length/2:0.01:obj.length/2;
+               new_points_x = obj.width/2*ones(size(new_points_y));
+               local_points.x = [local_points.x new_points_x];
+               local_points.y = [local_points.y new_points_y];
+               % Top edge
+               new_points_x = obj.width/2:-0.01:-obj.width/2;
+               new_points_y = obj.length/2*ones(size(new_points_x));
+               local_points.x = [local_points.x new_points_x];
+               local_points.y = [local_points.y new_points_y];
+               % Left edge
+               new_points_y = obj.length/2:-0.01:-obj.length/2;
+               new_points_x = -obj.width/2*ones(size(new_points_y));
+               local_points.x = [local_points.x new_points_x];
+               local_points.y = [local_points.y new_points_y];
+           end
+           
+           rot_mat = [cos(obj.theta-pi/2) -sin(obj.theta-pi/2);...
+               sin(obj.theta-pi/2) cos(obj.theta-pi/2)];
+           
+           translation = [obj.position.x;obj.position.y];
+           
+           global_points = rot_mat*[local_points.x;local_points.y] + translation;
+           
+           points.x = global_points(1,:);
+           points.y = global_points(2,:);
+%            points.rot_mat = rot_mat;
+%            points.translation = translation;
+%            points.local_points = local_points;
+           
+       end
+       function stop(obj)
+           obj.cmd_input.v = 0;
+           obj.cmd_input.omega = 0;
+           obj.pub_cmd();
        end
    end
 end
