@@ -3,7 +3,8 @@
 classdef mapA3 < map
     properties
        hls = [10,10]; % hw1 used to be 5.4-0.235, hw2 used to be 4-0.235
-       hws = [2.5,2.5];
+       hws = [2.5,2.5]; % hw2 = 2.5
+       model_traj = struct("points",[]);
     end
     methods
         function setParams(obj)
@@ -54,6 +55,8 @@ classdef mapA3 < map
            obj.set_patches();
            % Suggested maximum waypoint radius
            obj.maxRad_suggest = 5;
+           % NEW 02/23/2020
+           obj.set_modeltraj_points();
         end
         function set_wypt_base(obj)
             % Waypoint bases, n x 2
@@ -75,8 +78,8 @@ classdef mapA3 < map
                 y2 = (y2+(obj.hls(1) + obj.hws(2)*(avoid1-1)/2))/2;
                 obj.wypt_bases = [obj.wypt_bases;x1,y1;x2,y2];
             end
-            obj.wypt_bases = [obj.wypt_bases;obj.hls(2)+100,max(obj.hls(1)-obj.hws(2)/2,obj.wypt_bases(end,2))];
-            obj.wypt_bases = [obj.wypt_bases;obj.hls(2)+100,obj.hls(1)-obj.hws(2)/2];
+            obj.wypt_bases = [obj.wypt_bases;obj.hls(2)+10,max(obj.hls(1)-obj.hws(2)/2,obj.wypt_bases(end,2))];
+            obj.wypt_bases = [obj.wypt_bases;obj.hls(2)+10,obj.hls(1)-obj.hws(2)/2];
         end
         function wypt_bases = get_wypt_bases(obj)
             wypt_bases = obj.wypt_bases;
@@ -159,7 +162,7 @@ classdef mapA3 < map
             obj.patches.xend = obj.hls(2);
             obj.patches.ybottom = obj.hls(1)-obj.hws(2);
             obj.patches.ytop = obj.hls(1);
-            obj.patches.probs = 0.5*ones(1,obj.patches.num);
+            obj.patches.probs = 1.0*ones(1,obj.patches.num);
             obj.patches.width = (obj.patches.xend - obj.patches.xstart)/obj.patches.num;
             obj.patches.centers = [(obj.patches.width)*(0:obj.patches.num-1)+obj.patches.width/2+obj.patches.xstart;...
                 ((obj.patches.ytop+obj.patches.ybottom)/2)*ones(1,obj.patches.num)];
@@ -167,6 +170,17 @@ classdef mapA3 < map
         function check_flag(obj,p)
             if p.y > obj.hls(1)/2 && p.x > obj.hls(2)
                obj.end_flag = false; 
+            end
+        end
+        function set_modeltraj_points(obj)
+            num_points = 100; % 100 points between each wypt base
+            for i = 1:size(obj.wypt_bases,1)-1
+                wypta = obj.wypt_bases(i,:);
+                wyptb = obj.wypt_bases(i+1,:);
+                vec = (wyptb - wypta);
+                vec = vec/num_points;
+                points = (1:num_points)'*vec + wypta;
+                obj.model_traj.points = [obj.model_traj.points;points];
             end
         end
     end

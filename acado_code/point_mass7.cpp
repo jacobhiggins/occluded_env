@@ -22,6 +22,7 @@ int main()
   DifferentialState yc_left;
   DifferentialState left_bound;
   DifferentialState right_bound;
+  DifferentialState upper_bound;
   DifferentialState m_left; // Slope for robot-to-corner boundary on left side
   DifferentialState m_right;  // Slope for robot-to-corner boundary on right side
   DifferentialState dum1;
@@ -51,6 +52,7 @@ int main()
 
   f << dot(left_bound) == 0; // Location of left wall, not to hit
   f << dot(right_bound) == 0; // Location of right wall, not to hit
+  f << dot(upper_bound) == 0; // Corner location when unsafe
   f << dot(m_left) == 0;
   f << dot(m_right) == 0;
 
@@ -79,6 +81,7 @@ int main()
   ocp.subjectTo( -2 <= vy <= 2 );
   ocp.subjectTo( left_bound - x - epsilon <= 0 );
   ocp.subjectTo( x - epsilon - m_right*y - right_bound <= 0);
+  ocp.subjectTo( y - upper_bound - epsilon <= 0 );
   // ocp.subjectTo( m_left*(y-yc_left) - (x-xc_left) - epsilon <= 0 );
   ocp.subjectTo( 0 <= epsilon);
   // Now that the MPC is setup, export the code

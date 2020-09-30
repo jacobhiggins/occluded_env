@@ -20,7 +20,7 @@
 
 % Dimensions
 ACADO_N   = 50;
-ACADO_NX  = 15;
+ACADO_NX  = 16;
 ACADO_NDX = 0;
 ACADO_NXA = 0;
 ACADO_NU  = 3;

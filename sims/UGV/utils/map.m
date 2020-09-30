@@ -212,7 +212,7 @@ classdef map < handle
             legend("LOS","KU Area","Location","eastoutside");
             
         end
-        function update_plot(obj,p)
+        function update_plot(obj,p,sim_dt)
             
             % Update robot position
             obj.plt_p.XData = p.x;
@@ -319,10 +319,15 @@ classdef map < handle
             % Update title
             title(obj.fig_main.CurrentAxes,sprintf("MPC Motion, Time: %0.2f",p.t));
 
-            if obj.rec_vid
+            persistent t_int;
+            if isempty(t_int)
+               t_int = 0;
+            end
+            if obj.rec_vid && mod(t_int,int16(p.dt/sim_dt)) == 0
                 frame = getframe(obj.fig_main);
                 writeVideo(obj.vid,frame);
             end
+            t_int = t_int + 1;
         end
         function close(obj)
             if obj.rec_vid
@@ -443,11 +448,11 @@ classdef map < handle
            
         end
         function update_probs(obj,p)
-            p_z1_m1 = 0.9;
+            p_z1_m1 = 0.5;
             p_z1_m0 = 1 - p_z1_m1;
             p_z0_m0 = 0.9;
             p_z0_m1 = 1 - p_z0_m0;
-            p_move = 0.25;
+            p_move = 0.5;
             p_stay = 1 - p_move;
             % Update probs based on measurement
             for i = 1:obj.patches.num

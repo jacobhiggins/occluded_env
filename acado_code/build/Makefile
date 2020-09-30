@@ -56,17 +56,6 @@ CMAKE_BINARY_DIR = /mnt/c/Users/bezzo/Documents/GitHub/occluded_env/acado_code/b
 #=============================================================================
 # Targets provided globally by CMake.
 
-# Special rule for the target rebuild_cache
-rebuild_cache:
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
-	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
-.PHONY : rebuild_cache
-
-# Special rule for the target rebuild_cache
-rebuild_cache/fast: rebuild_cache
-
-.PHONY : rebuild_cache/fast
-
 # Special rule for the target edit_cache
 edit_cache:
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "No interactive CMake dialog available..."
@@ -77,6 +66,17 @@ edit_cache:
 edit_cache/fast: edit_cache
 
 .PHONY : edit_cache/fast
+
+# Special rule for the target rebuild_cache
+rebuild_cache:
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --cyan "Running CMake to regenerate build system..."
+	/usr/bin/cmake -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR)
+.PHONY : rebuild_cache
+
+# Special rule for the target rebuild_cache
+rebuild_cache/fast: rebuild_cache
+
+.PHONY : rebuild_cache/fast
 
 # The main all target
 all: cmake_check_build_system
@@ -124,6 +124,19 @@ vel_cmd/fast:
 .PHONY : vel_cmd/fast
 
 #=============================================================================
+# Target rules for targets named acc_cmd
+
+# Build rule for target.
+acc_cmd: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 acc_cmd
+.PHONY : acc_cmd
+
+# fast build rule for target.
+acc_cmd/fast:
+	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/build
+.PHONY : acc_cmd/fast
+
+#=============================================================================
 # Target rules for targets named point_mass7
 
 # Build rule for target.
@@ -135,6 +148,33 @@ point_mass7: cmake_check_build_system
 point_mass7/fast:
 	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/build
 .PHONY : point_mass7/fast
+
+acc_cmd.o: acc_cmd.cpp.o
+
+.PHONY : acc_cmd.o
+
+# target to build an object file
+acc_cmd.cpp.o:
+	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/acc_cmd.cpp.o
+.PHONY : acc_cmd.cpp.o
+
+acc_cmd.i: acc_cmd.cpp.i
+
+.PHONY : acc_cmd.i
+
+# target to preprocess a source file
+acc_cmd.cpp.i:
+	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/acc_cmd.cpp.i
+.PHONY : acc_cmd.cpp.i
+
+acc_cmd.s: acc_cmd.cpp.s
+
+.PHONY : acc_cmd.s
+
+# target to generate assembly for a file
+acc_cmd.cpp.s:
+	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/acc_cmd.cpp.s
+.PHONY : acc_cmd.cpp.s
 
 point_mass7.o: point_mass7.cpp.o
 
@@ -196,10 +236,14 @@ help:
 	@echo "... all (the default if no target is provided)"
 	@echo "... clean"
 	@echo "... depend"
-	@echo "... rebuild_cache"
 	@echo "... edit_cache"
 	@echo "... vel_cmd"
+	@echo "... acc_cmd"
 	@echo "... point_mass7"
+	@echo "... rebuild_cache"
+	@echo "... acc_cmd.o"
+	@echo "... acc_cmd.i"
+	@echo "... acc_cmd.s"
 	@echo "... point_mass7.o"
 	@echo "... point_mass7.i"
 	@echo "... point_mass7.s"

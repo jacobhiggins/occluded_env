@@ -43,6 +43,8 @@ classdef point_2 < handle
       MPCoutput = struc('x',[],'u',[]);
       large_num = 100000;
       ku = struct("areas",[0.0]);
+      safe = false; % Safe to move around corners
+      stop_dist = 0.5; % m
    end
    methods
        function initial_params(obj,map)
@@ -85,6 +87,7 @@ classdef point_2 < handle
           if dely_rc > 0
               curr_rc = min(curr_rc + 1,size(map.corners_r,1));
               obj.rc_active = false;
+              obj.safe = false;
           end
           
           
@@ -202,9 +205,12 @@ classdef point_2 < handle
            if norm([obj.x-next_wpb(1),obj.y-next_wpb(2)],2) < obj.r
                c_base = c_base + 1;
            end
-           obj.scale_wypt(map);
+%            obj.scale_wypt(map); % Place at corner if not safe
+           obj.shift_wypt(map); % Test points on model traj until safe
        end
        function scale_wypt(obj,map)
+           % Check expected dist to collision for safety
+           % If not safe, project waypoint onto corner line
            num_points = 25;
            del_x = abs(obj.x - obj.wypt.x);
            del_y = abs(obj.y - obj.wypt.y);
@@ -245,14 +251,132 @@ classdef point_2 < handle
            end
            % Using dist + theta (instead of exact point) ensures
            % the waypoint is always in the right direction
-           dist = norm([x_avg;y_avg]-[obj.x;obj.y]);
+           
+           [wypt_primex,wypt_primey] = c2u(obj.wypt.x,obj.wypt.y,obj.x,obj.y,obj.M_mpc);
+           [corner_primex,corner_primey] = c2u(obj.xc_mpc_r,obj.yc_mpc_r,obj.x,obj.y,obj.M_mpc);
+           y_cp_prime = corner_primey; % projection of wypt onto corner plane
+           x_cp_prime = wypt_primex*corner_primey/wypt_primey;
+           [x_cp,y_cp] = u2c(x_cp_prime,y_cp_prime,obj.x,obj.y,obj.M_mpc);
+           
+           vec_cp_avg = [x_avg-x_cp;y_avg-y_cp]; % vector from cp to wypt
+           vec_r_wypt = [obj.wypt.x-obj.x;obj.wypt.y-obj.y]; % vector from r to wypt
+           vec_r_wypt = vec_r_wypt/norm(vec_r_wypt);
+           
+           vec = obj.M_mpc*([x_avg;y_avg]-[obj.x;obj.y]);
+           dist_to_exp = norm([x_avg;y_avg]-[obj.x;obj.y]);
+           dist_to_fast_wypt = norm([obj.wypt.x;obj.wypt.y] - [obj.x;obj.y]);
+           delta_dist = dist_to_fast_wypt - dist_to_exp;
            theta = atan2(obj.wypt.y - obj.y,obj.wypt.x - obj.x);
-           obj.wypt.x = obj.x + dist*cos(theta);
-           obj.wypt.y = obj.y + dist*sin(theta);
+           if vec_r_wypt'*vec_cp_avg > obj.stop_dist
+              obj.safe = true; 
+           end
+           if ~obj.safe
+               if wypt_primey > y_cp_prime
+                  obj.wypt.x = x_cp;
+                  obj.wypt.y = y_cp;
+               end
+           end
+%            obj.wypt.x = obj.x + dist*cos(theta); % Old way, place
+%            obj.wypt.y = obj.y + dist*sin(theta); % wypt at expectation
+       end
+       function shift_wypt(obj,map) % NEW 09/23/2020
+           persistent I_old; % index of last waypoint
+           if isempty(I_old)
+              I_old = 0; 
+           end
+           % Use expected distance to collision for safety
+           % If not safe, follow model traj backwards until you find a safe
+           % point. Stop at corner
+           dist = obj.expected_dist2coll(map,obj.wypt);
+           if dist > obj.stop_dist || dist < 0
+              if dist > obj.stop_dist
+                  obj.safe = true;
+              end
+              return;
+           end
+%            if ~obj.safe
+              % Get next closest point on model trajectory
+              [~,I] = min(vecnorm([map.model_traj.points(:,1),map.model_traj.points(:,2)]-[obj.wypt.x,obj.wypt.y],2,2));
+              test_point.x = map.model_traj.points(I,1);
+              test_point.y = map.model_traj.points(I,2);
+              tp_primey = 100; % Initialize to enter while loop
+              while tp_primey > 0.01 && I > I_old
+                  dist = obj.expected_dist2coll(map,test_point);
+                  % If this point satisfies the condition, break from
+                  % while loop
+                  if dist > obj.stop_dist || dist < 0
+                     if dist > obj.stop_dist
+                        obj.safe = true; 
+                     end
+                     break;
+                  end
+                  I = I - 1;
+                  test_point.x = map.model_traj.points(I,1);
+                  test_point.y = map.model_traj.points(I,2);
+                  [~,tp_primey] = c2u(test_point.x,test_point.y,obj.x,obj.y,obj.M_mpc);
+              end
+              I_old = I; % Make sure new wypt is farther than last wypt
+              obj.wypt.x = test_point.x;
+              obj.wypt.y = test_point.y;
+           end
+%        end
+       function dist = expected_dist2coll(obj,map,test_point)
+           num_points = 25;
+           del_x = abs(obj.x - test_point.x);
+           del_y = abs(obj.y - test_point.y);
+           xs_probe = obj.x:del_x/num_points:test_point.x;
+           ys_probe = obj.y:del_y/num_points:test_point.y;
+           x_avg = 0.0;
+           y_avg = 0.0;
+           prob_product = 1;
+           for i = 1:num_points
+               % Get probe x-y position
+               if isempty(xs_probe)
+                   x_probe = obj.x;
+               else
+                   x_probe = xs_probe(i);
+               end
+               if isempty(ys_probe)
+                   y_probe = obj.y;
+               else
+                   y_probe = ys_probe(i);
+               end
+               % Get index of probability that is closest to that position
+               shifted_centers = abs(map.patches.centers - [x_probe;y_probe]);
+               is = logical(shifted_centers(1,:) <= map.patches.width/2).*logical(shifted_centers(2,:) <= map.hws(2)/2);
+               prob = map.patches.probs(logical(is));
+               if ~isempty(prob)
+                   prob = prob(1);
+               else
+                   prob = 1;
+               end
+               if i < num_points
+                   x_avg = x_avg + x_probe*prob_product*(1-prob);
+                   y_avg = y_avg + y_probe*prob_product*(1-prob);
+               else
+                   x_avg = x_avg + x_probe*prob_product;
+                   y_avg = y_avg + y_probe*prob_product;
+               end
+               prob_product = prob_product*prob;
+           end
+           % Get projection of waypoint on corner plane
+           [tp_primex,tp_primey] = c2u(test_point.x,test_point.y,obj.x,obj.y,obj.M_mpc);
+           [~,corner_primey] = c2u(obj.xc_mpc_r,obj.yc_mpc_r,obj.x,obj.y,obj.M_mpc);
+           y_cp_prime = corner_primey; % projection of wypt onto corner plane
+           x_cp_prime = tp_primex*corner_primey/tp_primey;
+           [x_cp,y_cp] = u2c(x_cp_prime,y_cp_prime,obj.x,obj.y,obj.M_mpc);
+           
+           % Get vector between robot and expect point of collision
+           vec_cp_avg = [x_avg-x_cp;y_avg-y_cp]; % vector from cp to wypt
+           vec_r_tp = [test_point.x-obj.x;test_point.y-obj.y]; % vector from r to wypt
+           vec_r_tp = vec_r_tp/norm(vec_r_tp); % Normalize (don't care about this distance)
+           
+           dist = vec_r_tp'*vec_cp_avg;
        end
        function set_radius(obj,xm2,ym2,theta2,dist_frac)
            r = obj.maxRad;
            if(obj.last_sec)
+               obj.r = r;
               return 
            end
            theta = atan2(obj.yc_wp-obj.y,obj.xc_wp-obj.x);
@@ -416,17 +540,34 @@ classdef point_2 < handle
            end
            
            if obj.lc_active
-              perc_l_weight = 5; 
+              perc_l_weight = 0.0005;
+              xc_l = -50;
+              yc_l = 0;
            else
-              perc_l_weight = 5;
+              perc_l_weight = 0.0005;
               xc_l = -50;
               yc_l = 0;
            end
-           
+           upper_bound = 0;
            if obj.rc_active
-              perc_r_weight = 500; %10000000; 
+               if obj.safe
+                   perc_r_weight = 0.00005; %10000000;
+                   x_weight = 10;
+                   upper_bound = 100;
+               else
+                   perc_r_weight = 300;
+                   x_weight = 10;
+                   upper_bound = 0;
+                   %%%%
+%                    perc_r_weight = 0.00005; %10000000;
+%                    x_weight = 10;
+%                    upper_bound = 0;
+               end
+%               perc_r_weight = 300;
+%               x_weight = 10;
            else
-              perc_r_weight = 0.5;
+              perc_r_weight = 0.000005;
+              x_weight = 50;
            end
            
            % If projected motion doesn't reach corner, don't set slope
@@ -445,7 +586,7 @@ classdef point_2 < handle
            var_l = phi_l_y;
            var_des = 0;
            
-           obj.MPCinput.x0 = [xr,yr,vx,vy,ax,ay,var_r,var_l,xc_l,yc_l,left_bound,right_bound,m_l_inv,m_r_inv,0];
+           obj.MPCinput.x0 = [xr,yr,vx,vy,ax,ay,var_r,var_l,xc_l,yc_l,left_bound,right_bound,upper_bound,m_l_inv,m_r_inv,0];
            
            obj.MPCinput.x = [xr*ones((obj.N+1),1) ...
                yr*ones((obj.N+1),1) ...
@@ -459,6 +600,7 @@ classdef point_2 < handle
                yc_l*ones((obj.N+1),1) ...
                left_bound*ones(obj.N+1,1) ...
                right_bound*ones(obj.N+1,1) ...
+               upper_bound*ones(obj.N+1,1) ...
                m_l_inv*ones(obj.N+1,1) ...
                m_r_inv*ones(obj.N+1,1) ...
                0*ones(obj.N+1,1)];
@@ -467,7 +609,7 @@ classdef point_2 < handle
            obj.MPCinput.yN = [xg yg var_des var_des];
            
            % x, y, perception right, perception left, ax_dot, ay_dot, epsilon
-           A = diag([5 50 perc_r_weight perc_l_weight 10 10 50000000]);
+           A = diag([x_weight 50 perc_r_weight perc_l_weight 10 10 50000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
@@ -476,7 +618,7 @@ classdef point_2 < handle
            obj.MPCinput.W = repmat(A,obj.N,1);
 %            A_total = [];
 %            for i= 1:obj.N
-%               A_total = [A_total;diag([A(1,1),A(2,2)^(1+i*0.001),A(3,3),A(4,4),A(5,5),A(6,6),A(7,7)])]; 
+%               A_total = [A_total;diag([A(1,1),A(2,2)^(1+i*0.01),A(3,3),A(4,4),A(5,5),A(6,6),A(7,7)])]; 
 %            end
 %            obj.MPCinput.W = A_total;
            obj.MPCinput.WN = diag([A(1,1) A(2,2) A(3,3) A(4,4)]);

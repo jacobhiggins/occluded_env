@@ -74,7 +74,7 @@ classdef UGV < handle
            obj.L = 0.354;
            obj.max_w = 17.11;
            obj.dd = DifferentialDrive(obj.R,obj.L);
-           obj.dt = 0.1;
+           obj.dt = 0.01;
            obj.t = 0.0;
            obj.x = map.pose_start.x;
            obj.y = map.pose_start.y;
@@ -329,6 +329,7 @@ classdef UGV < handle
            % Use both left and right corners instead of just the right
            left_bound = obj.current_owall;
            right_bound = 0;
+           upper_bound = 10;
            if obj.current_sec==3
                right_bound = 15;
            end
@@ -389,7 +390,7 @@ classdef UGV < handle
            var_l = phi_l_y;
            var_des = 0;
            
-           obj.MPCinput.x0 = [xr,yr,vx,vy,ax,ay,var_r,var_l,xc_l,yc_l,left_bound,right_bound,m_l_inv,m_r_inv,0];
+           obj.MPCinput.x0 = [xr,yr,vx,vy,ax,ay,var_r,var_l,xc_l,yc_l,left_bound,right_bound,upper_bound,m_l_inv,m_r_inv,0];
            
            obj.MPCinput.x = [xr*ones((obj.N+1),1) ...
                yr*ones((obj.N+1),1) ...
@@ -403,6 +404,7 @@ classdef UGV < handle
                yc_l*ones((obj.N+1),1) ...
                left_bound*ones(obj.N+1,1) ...
                right_bound*ones(obj.N+1,1) ...
+               upper_bound*ones(obj.N+1,1) ...
                m_l_inv*ones(obj.N+1,1) ...
                m_r_inv*ones(obj.N+1,1) ...
                0*ones(obj.N+1,1)];
@@ -446,10 +448,14 @@ classdef UGV < handle
            obj.proj_mot.y = proj_mot(:,2);
            
        end
-       function mpc_stepDD(obj)
+       function mpc_acc2vel(obj)
+           if mod(obj.t,obj.dt) > 0.1001
+               return;
+           end
            % Use both left and right corners instead of just the right
            left_bound = obj.current_owall;
            right_bound = 0;
+           upper_bound = 10;
            if obj.current_sec==3
                right_bound = 15;
            end
@@ -470,9 +476,6 @@ classdef UGV < handle
            [vx,vy] = c2u(vx_in,vy_in,0,0,obj.M_mpc);
            [xc_r,yc_r] = c2u(xc_r_in,yc_r_in,xc_r_in,yc_r_in,obj.M_mpc);
            [xc_l,yc_l] = c2u(xc_l_in,yc_l_in,xc_r_in,yc_r_in,obj.M_mpc);
-           
-           theta = obj.theta;
-%            theta = pi/4;
            
            % Visibility Objective
            m_r = (yc_r - yr)/(xc_r - xr);
@@ -510,50 +513,55 @@ classdef UGV < handle
            var_l = phi_l_y;
            var_des = 0;
            
-           obj.MPCinput.x0 = [xr,yr,theta,xc_l,yc_l,left_bound,right_bound,m_l_inv,m_r_inv,0];
+           obj.MPCinput.x0 = [xr,yr,vx,vy,var_r,var_l,xc_l,yc_l,left_bound,right_bound,upper_bound,m_l_inv,m_r_inv,0];
            
-           obj.MPCinput.x = [xr*ones((obj.N+1),1), ...
-               yr*ones((obj.N+1),1), ...
-               theta*ones(obj.N+1,1), ...
-               xc_l*ones((obj.N+1),1), ...
-               yc_l*ones((obj.N+1),1), ...
-               left_bound*ones(obj.N+1,1), ...
-               right_bound*ones(obj.N+1,1), ...
-               m_l_inv*ones(obj.N+1,1), ...
-               m_r_inv*ones(obj.N+1,1), ...
+           obj.MPCinput.x = [xr*ones((obj.N+1),1) ...
+               yr*ones((obj.N+1),1) ...
+               vx*ones(obj.N+1,1) ...
+               vy*ones(obj.N+1,1) ...
+               var_r*ones((obj.N+1),1) ...
+               var_l*ones((obj.N+1),1) ...
+               xc_l*ones((obj.N+1),1) ...
+               yc_l*ones((obj.N+1),1) ...
+               left_bound*ones(obj.N+1,1) ...
+               right_bound*ones(obj.N+1,1) ...
+               upper_bound*ones(obj.N+1,1) ...
+               m_l_inv*ones(obj.N+1,1) ...
+               m_r_inv*ones(obj.N+1,1) ...
                0*ones(obj.N+1,1)];
            
-           %                var_r*ones((obj.N+1),1) ...
-%                var_l*ones((obj.N+1),1) ...
+           obj.MPCinput.y = [xg*ones(obj.N,1), yg*ones(obj.N,1), var_r*ones(obj.N,1), var_l*ones(obj.N,1), 0*ones(obj.N,1),0*ones(obj.N,1),0*ones(obj.N,1)];
+           obj.MPCinput.yN = [xg yg var_des var_des];
            
-           
-           obj.MPCinput.y = [xg*ones(obj.N,1), ...
-               yg*ones(obj.N,1), ...
-               0*ones(obj.N,1), ...
-               0*ones(obj.N,1), ...
-               0*ones(obj.N,1)];
-           
-           %                var_des*ones(obj.N,1), 
-%                var_des*ones(obj.N,1),
-
-           obj.MPCinput.yN = [xg yg]; 
-%                var_des var_des
-%                ];
-           
-           % x, y, perception right, perception left, ax_dot, ay_dot, epsilon
-           A = diag([500 500 100 1 1]);
+           % x, y, perception right, perception left, ax, ay, epsilon
+           A = diag([50 500 5 perc_l_weight 25 25 50000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
 %            end
            
            obj.MPCinput.W = repmat(A,obj.N,1);
-           obj.MPCinput.WN = diag([A(1,1) A(2,2)]);% A(3,3) A(4,4)]);
+           obj.MPCinput.WN = diag([A(1,1) A(2,2) A(3,3) A(4,4)]);
            
-           obj.MPCoutput = acado_solver8( obj.MPCinput );
-           us = obj.MPCoutput.u(1,:);
-           obj.cmd_inputs.v = us(1);
-           obj.cmd_inputs.omega = det(obj.M_mpc)*us(2);
+           obj.MPCoutput = acado_solver_acc_cmd( obj.MPCinput );
+           as = obj.MPCoutput.u(1,:);
+           ax = as(1);
+           ay = as(2);
+           vx_cmd = vx + ax*dt;
+           vy_cmd = vy + ay*dt;
+           if(abs(vx_cmd)>0.001)
+              obj.debug.is_true = true;
+              obj.debug.xrs = [obj.debug.xrs;xr];
+              obj.debug.vxs = [obj.debug.vxs;vx];
+              obj.debug.vys = [obj.debug.vys;vy];
+              obj.debug.x_accs = [obj.debug.x_accs;ax];
+%               obj.debug.x_jerks = [obj.debug.x_jerks;ax_dot];
+              obj.debug.vx_cmds = [obj.debug.vx_cmds;vx_cmd];
+              obj.debug.vy_cmds = [obj.debug.vy_cmds;vy_cmd];
+           end
+           [vx_cmd,vy_cmd] = c2u(vx_cmd,vy_cmd,0,0,inv(obj.M_mpc));
+           obj.cmd_input.x = vx_cmd;
+           obj.cmd_input.y = vy_cmd;
            
            proj_mot = (inv(obj.M_mpc)*obj.MPCoutput.x(:,1:2)' + [xc_r_in*ones(obj.N+1,1) yc_r_in*ones(obj.N+1,1)]')';
            
@@ -693,16 +701,20 @@ classdef UGV < handle
            obj.cmd_input.x = vec(1);
            obj.cmd_input.y = vec(2);
        end
-       function motion_step(obj)
+       function motion_step(obj,sim_dt)
           persistent del_theta_int;
+          persistent e_theta_old;
           if isempty(del_theta_int) || obj.t < 0.001
              del_theta_int = 0;
+             e_theta_old= 0;
           end
           Kv = 1;
-          Kw = 1;
-          Kw_i = 0.001;
-          vec = [obj.cmd_input.x;obj.cmd_input.y;0];
-          heading = [cos(obj.theta);sin(obj.theta);0];
+%           Kw = 1; % Before 09/29/2020
+%           Kw_i= 0.001;
+          Kw = 10;
+          Kw_i = 0.01;
+          Kw_d = 1;
+          vec = [obj.cmd_input.x;obj.cmd_input.y];
           v_cmd = Kv*max(min(norm(vec,2),obj.max_v),-obj.max_v);
           theta1 = obj.theta;
           theta2 = atan2(obj.cmd_input.y,obj.cmd_input.x);
@@ -710,7 +722,9 @@ classdef UGV < handle
           e_theta = atan2(sin(e_theta),cos(e_theta));
 %           del_theta = sign(cross(vec,heading))*acos(dot(vec,heading)/norm(vec,2));
           del_theta_int = del_theta_int + e_theta;
-          w_cmd = Kw*e_theta + Kw_i*del_theta_int;
+          e_theta_dot = (e_theta - e_theta_old)/obj.dt;
+          e_theta_old = e_theta;
+          w_cmd = Kw*e_theta + Kw_i*del_theta_int + Kw_d*e_theta_dot;
           w_cmd = min(max(w_cmd,-obj.max_omega),obj.max_omega);
           if obj.debug.is_true
              obj.debug.v_cmds = [obj.debug.v_cmds;v_cmd];
@@ -727,12 +741,12 @@ classdef UGV < handle
           [v,w] = forwardKinematics(obj.dd,wL,wR);
           velB = [v;0;w]; % Body velocities [vx;vy;w]
           vel = bodyToWorld(velB,[obj.x;obj.y;obj.theta]);  % Convert from body to world
-          obj.ax = (vel(1) - obj.vx)/obj.dt;
-          obj.ay = (vel(2) - obj.vy)/obj.dt;
+          obj.ax = (vel(1) - obj.vx)/sim_dt;
+          obj.ay = (vel(2) - obj.vy)/sim_dt;
           obj.vx = vel(1);
           obj.vy = vel(2);
           % Perform forward discrete integration step
-          pose = [obj.x;obj.y;obj.theta] + vel*obj.dt;
+          pose = [obj.x;obj.y;obj.theta] + vel*sim_dt;
           obj.x = pose(1);
           obj.y = pose(2);
           obj.theta = atan2(sin(pose(3)),cos(pose(3)));
@@ -740,7 +754,7 @@ classdef UGV < handle
           obj.w = w;
           obj.cmd_input.v = v;
           obj.cmd_input.omega = w;
-          obj.t = obj.t + obj.dt;
+          obj.t = obj.t + sim_dt;
           obj.rec_data();
        end
        function motion_stepDD(obj)

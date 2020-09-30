@@ -212,7 +212,7 @@ classdef map < handle
             legend("LOS","KU Area","Location","eastoutside");
             
         end
-        function update_plot(obj,p)
+        function update_plot(obj,p,sim_dt)
             
             % Update robot position
             obj.plt_p.XData = p.x;
@@ -319,7 +319,11 @@ classdef map < handle
             % Update title
             title(obj.fig_main.CurrentAxes,sprintf("MPC Motion, Time: %0.2f",p.t));
 
-            if obj.rec_vid
+            persistent t_int;
+            if isempty(t_int)
+               t_int = 0; 
+            end
+            if obj.rec_vid && mod(p.t,p.dt) < 0.001
                 frame = getframe(obj.fig_main);
                 writeVideo(obj.vid,frame);
             end
@@ -338,14 +342,17 @@ classdef map < handle
             grid on;
             ylabel("Velocity (m/s)","LineWidth",2);
             subplot(2,1,2);
+            yyaxis left;
             plot(ts,LOSs);
-            grid on;
             ylabel("Line of Sight (m)","LineWidth",2);
+            yyaxis right;
+            plot(ts,p.ku.areas);
+            ylabel("Known-Unknown Area (m^2)");
             xlabel("Time (s)");
             post_data.vs = vs;
             post_data.ts = ts;
             post_data.LOSs = LOSs;
-            post_data.
+            post_data.ku = p.ku.areas;
             assignin('base','post_data',post_data);
         end
         function isVis = isVisible(obj,corner,p)
@@ -440,7 +447,7 @@ classdef map < handle
            
         end
         function update_probs(obj,p)
-            p_z1_m1 = 0.9;
+            p_z1_m1 = 0.5;
             p_z1_m0 = 1 - p_z1_m1;
             p_z0_m0 = 0.9;
             p_z0_m1 = 1 - p_z0_m0;
