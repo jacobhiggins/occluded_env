@@ -3,6 +3,8 @@
 
 clear all;
 
+warning('off','ros:mlros:common:SavedObjectInvalid')
+
 addpath('../robotsim/mathworks-robotics-mobile-robotics-simulation-toolbox-7066fa0/src/kinematics')
 addpath('../acado_code/point_mass_export7/')
 addpath('../acado_code/vel_export')
@@ -26,15 +28,18 @@ map.init_params(robot);
 vis = visualizer();
 vis.init(robot,map);
 
-total_time = 20.0;
-tic;
-while toc < total_time && ~map.stop
+tic; % Global time for all components
+toc_prev = toc;
+freqs = [];
+while ~map.stop && toc < 10
+   freqs = [freqs 1/(toc-toc_prev)];
+   toc_prev = toc;
 %     pub_msg = rosmessage(robot.pub);
 %     pub_msg.Linear.X = 0.1;
 %     pub_msg.Angular.Z = 0.0;
 %     send(robot.pub,pub_msg);
    % Check stop experiment
-   map.check_stop_experiment(robot);
+%    map.check_stop_experiment(robot);
    % Get position of jackal
    robot.get_pose();
    % Get corners

@@ -41,4 +41,5 @@ set(CMAKE_MAKEFILE_PRODUCTS
 # Dependency information for all targets:
 set(CMAKE_DEPEND_INFO_FILES
   "CMakeFiles/vel_cmd_jackal3.dir/DependInfo.cmake"
+  "CMakeFiles/acc_cmd.dir/DependInfo.cmake"
   )

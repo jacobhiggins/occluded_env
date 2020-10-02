@@ -55,7 +55,7 @@ classdef map_real < handle
            yc = p.corner.mpc.y;
            [x,y] = c2u(p.position.x,p.position.y,xc,yc,p.M_mpc);
            hw2 = abs(p.next_owall);
-           
+           p.ku = ku;
            if norm([x,y],2)>p.maxRad || y > 0.0
                return
            end

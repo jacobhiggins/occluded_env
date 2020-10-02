@@ -118,20 +118,27 @@ classdef jackal_real < handle
            obj.joy_buttons = joy_msg.Buttons;
        end
        function get_pose(obj)
-           persistent old_pos;
+           persistent old_pos
+           persistent last_sub_time;
            if isempty(old_pos)
               pos_msg = receive(obj.sub_pos,1);
               old_pos.x = pos_msg.Transform.Translation.X;
               old_pos.y = pos_msg.Transform.Translation.Y;
-              old_pos.t = pos_msg.Header.Stamp.Nsec;
-              pause(0.1);
+              old_pos.t = toc;
+%               pause(0.1);
+           end
+           if isempty(last_sub_time)
+              last_sub_time = toc; 
+           end
+           if (toc - last_sub_time) < 0.1
+              return;
            end
            pos_msg = receive(obj.sub_pos,1);
 %            vel_msg = receive(obj.sub_vel,1);
            obj.position.x = pos_msg.Transform.Translation.X;
            obj.position.y = pos_msg.Transform.Translation.Y;
-           obj.t = pos_msg.Header.Stamp.Nsec;
-           obj.vels.v = norm([obj.position.x-old_pos.x;obj.position.y-old_pos.y])/( (obj.t-old_pos.t)*10^-9);
+           obj.t = toc;
+           obj.vels.v = norm([obj.position.x-old_pos.x;obj.position.y-old_pos.y])/( (obj.t-old_pos.t));
 %            v = vel_msg.Twist.Twist.Linear.X;
            q = [pos_msg.Transform.Rotation.W,...
                pos_msg.Transform.Rotation.X,...
@@ -140,8 +147,14 @@ classdef jackal_real < handle
            R = quat2rotm(q);
            obj.theta = -atan2(R(1,2),R(1,1)) + pi/2; %% Get correct angle from rotations
            obj.theta = atan2(sin(obj.theta),cos(obj.theta)); %% Fit heading within [-pi,pi]
-           obj.vels.x = obj.vels.v*cos(obj.theta);
-           obj.vels.y = obj.vels.v*sin(obj.theta);
+%            obj.vels.x = obj.vels.v*cos(obj.theta);
+%            obj.vels.y = obj.vels.v*sin(obj.theta);
+           obj.vels.x = (obj.position.x-old_pos.x)/(obj.t-old_pos.t);
+           obj.vels.y = (obj.position.y-old_pos.y)/(obj.t-old_pos.t);
+           old_pos.x = obj.position.x;
+           old_pos.y = obj.position.y;
+           old_pos.t = obj.t;
+           last_sub_time = obj.t;
        end
        function get_wypt(obj,map)
 %            obj.wypt.y = map.corner.y;
@@ -228,7 +241,7 @@ classdef jackal_real < handle
                if (r > obj.r && r < obj.maxRad) || r < 0
                    if r > 0
 %                        r = min(obj.r + obj.maxRad/50,r);
-                        r = obj.maxRad;
+%                         r = obj.maxRad;
                    else
 %                        r = obj.r + obj.maxRad/50;
                        r = obj.maxRad;
@@ -280,6 +293,13 @@ classdef jackal_real < handle
           send(obj.pub,pub_msg);
        end
        function mpc_stepvel(obj)
+           persistent last_sample_time;
+           if isempty(last_sample_time)
+              last_sample_time = toc; 
+           end
+           if obj.t - last_sample_time < 0.95
+               return;
+           end
            % Use both left and right corners instead of just the right
            left_bound = obj.current_owall;
            right_bound = 0;
@@ -401,6 +421,8 @@ classdef jackal_real < handle
            
            obj.proj_mot.x = proj_mot(:,1);
            obj.proj_mot.y = proj_mot(:,2);
+           
+           last_sample_time = toc;
        end
        function cmd_step(obj)
           persistent del_theta_int;
@@ -441,6 +463,7 @@ classdef jackal_real < handle
           obj.rec_data();
        end
        function rec_data(obj)
+           
            obj.trail.x = [obj.trail.x obj.position.x];
            obj.trail.y = [obj.trail.y obj.position.y];
            obj.trail.theta = [obj.trail.theta obj.theta];

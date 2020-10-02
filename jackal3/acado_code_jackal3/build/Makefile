@@ -123,6 +123,46 @@ vel_cmd_jackal3/fast:
 	$(MAKE) -f CMakeFiles/vel_cmd_jackal3.dir/build.make CMakeFiles/vel_cmd_jackal3.dir/build
 .PHONY : vel_cmd_jackal3/fast
 
+#=============================================================================
+# Target rules for targets named acc_cmd
+
+# Build rule for target.
+acc_cmd: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 acc_cmd
+.PHONY : acc_cmd
+
+# fast build rule for target.
+acc_cmd/fast:
+	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/build
+.PHONY : acc_cmd/fast
+
+acc_cmd.o: acc_cmd.cpp.o
+
+.PHONY : acc_cmd.o
+
+# target to build an object file
+acc_cmd.cpp.o:
+	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/acc_cmd.cpp.o
+.PHONY : acc_cmd.cpp.o
+
+acc_cmd.i: acc_cmd.cpp.i
+
+.PHONY : acc_cmd.i
+
+# target to preprocess a source file
+acc_cmd.cpp.i:
+	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/acc_cmd.cpp.i
+.PHONY : acc_cmd.cpp.i
+
+acc_cmd.s: acc_cmd.cpp.s
+
+.PHONY : acc_cmd.s
+
+# target to generate assembly for a file
+acc_cmd.cpp.s:
+	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/acc_cmd.cpp.s
+.PHONY : acc_cmd.cpp.s
+
 vel_cmd_jackal3.o: vel_cmd_jackal3.cpp.o
 
 .PHONY : vel_cmd_jackal3.o
@@ -157,8 +197,12 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... rebuild_cache"
-	@echo "... vel_cmd_jackal3"
 	@echo "... edit_cache"
+	@echo "... vel_cmd_jackal3"
+	@echo "... acc_cmd"
+	@echo "... acc_cmd.o"
+	@echo "... acc_cmd.i"
+	@echo "... acc_cmd.s"
 	@echo "... vel_cmd_jackal3.o"
 	@echo "... vel_cmd_jackal3.i"
 	@echo "... vel_cmd_jackal3.s"

@@ -1,3 +1,8 @@
+%% Plotting params
+
+show_vid= false;
+warning('off','ros:mlros:common:LoadedObjectInvalid');
+
 %% Load Data
 close all;
 load("robot_experiment.mat");
@@ -10,77 +15,79 @@ corner = map.corner;
 wypt_bases = map.model_traj.wypt_bases;
 
 %% Plot data, all at once
-% figure(1);
-% plot(trail.x,trail.y);
-% axis equal;
-% grid on;
-% xlabel("X Position (m)");
-% ylabel("Y Position (m)");
+figure(1);
+hold on;
+plot(ts,robot.vs.vxs,"DisplayName","Y Velocity","LineWidth",2);
+plot(ts,robot.vs.vys,"DisplayName","X Velocity","LineWidth",2);
+xlabel("time (s)");
+ylabel("m/s");
 
 %% Show vid, plotting data over time
-figure(2);
-delts = (ts(2:end) - ts(1:end-1))*10^-9;
-xs = [trail.x(1)];
-ys = [trail.y(1)];
-vid = VideoWriter("vid.avi");
-hold on;
-% Draw physical walls and configuration space for robot
-plt_wall = patch([corner.x,10,10,corner.x],[corner.x,corner.y,-10,-10],[0.5 0.5 0.5]);
-plt_wall_limit = plot([robot.corner_hist{1}.mpc.x robot.corner_hist{1}.mpc.x],[robot.corner.mpc.y -10],'--');
-% Draw waypoint bases + model trajectory (red dashed line)
-for i = 1:length(wypt_bases.xs)-1
-    plot([wypt_bases.xs(i) wypt_bases.xs(i+1)],[wypt_bases.ys(i) wypt_bases.ys(i+1)],"r--");
+if show_vid
+    figure(2);
+    delts = (ts(2:end) - ts(1:end-1))*10^-9;
+    xs = [trail.x(1)];
+    ys = [trail.y(1)];
+    vid = VideoWriter("vid.avi");
+    hold on;
+    % Draw physical walls and configuration space for robot
+    plt_wall = patch([corner.x,10,10,corner.x],[corner.x,corner.y,-10,-10],[0.5 0.5 0.5]);
+    plt_wall_limit = plot([robot.corner_hist{1}.mpc.x robot.corner_hist{1}.mpc.x],[robot.corner.mpc.y -10],'--');
+    % Draw waypoint bases + model trajectory (red dashed line)
+    for i = 1:length(wypt_bases.xs)-1
+        plot([wypt_bases.xs(i) wypt_bases.xs(i+1)],[wypt_bases.ys(i) wypt_bases.ys(i+1)],"r--");
+    end
+    %
+    plt_r = plot(trail.x(1),trail.y(1),"o","MarkerSize",5,"DisplayName","Jackal3");
+    circ_points = drawCirc(robot.rs(1),trail.x(1),trail.y(1));
+    plt_radius = plot(circ_points.x,circ_points.y);
+    plt_outline = plot(outlines{1}.x,outlines{1}.y);
+    plt_wypt = plot(robot.wypt_hist{1}.x,robot.wypt_hist{1}.y,"x","MarkerSize",10,"DisplayName","Waypoint");
+    head_scale = 0.5;
+    plt_heading = quiver(trail.x(1),...
+        trail.y(1),...
+        head_scale*cos(trail.theta(1)),...
+        head_scale*sin(trail.theta(1)),...
+        "DisplayName","Heading",...
+        "LineWidth",2);
+    plt_proj = plot(proj_mots(1).x,proj_mots(1).y,...
+        "DisplayName","Projected Motion",...
+        "LineWidth",2);
+    plt_trail = plot(xs,ys,"DisplayName","Trail",...
+        "LineWidth",2);
+    
+    axis equal;
+    grid on;
+    xlim([-2.5,1]);
+    ylim([-2.5,1.5]);
+    xlabel("X Position (m)");
+    ylabel("Y Position (m)");
+    title("Experiments");
+    legend([plt_r,plt_proj],"Location","eastoutside");
+    open(vid);
+    for i = 1:length(delts)
+        plt_r.XData = trail.x(i);
+        plt_r.YData = trail.y(i);
+        plt_outline.XData = outlines{i}.x;
+        plt_outline.YData = outlines{i}.y;
+        plt_heading.XData = trail.x(i);
+        plt_heading.YData = trail.y(i);
+        plt_heading.UData = head_scale*cos(trail.theta(i));
+        plt_heading.VData = head_scale*sin(trail.theta(i));
+        plt_wypt.XData = robot.wypt_hist{i}.x;
+        plt_wypt.YData = robot.wypt_hist{i}.y;
+        plt_proj.XData = proj_mots(i).x;
+        plt_proj.YData = proj_mots(i).y;
+        circ_points = drawCirc(robot.rs(i),trail.x(i),trail.y(i));
+        plt_radius.XData = circ_points.x;
+        plt_radius.YData = circ_points.y;
+        xs = [xs trail.x(i)];
+        ys = [ys trail.y(i)];
+        plt_trail.XData = xs;
+        plt_trail.YData = ys;
+        frame = getframe(gcf);
+        writeVideo(vid,frame);
+        pause(delts(i));
+    end
+    close(vid);
 end
-%
-plt_r = plot(trail.x(1),trail.y(1),"o","MarkerSize",5,"DisplayName","Jackal3");
-circ_points = drawCirc(robot.rs(1),trail.x(1),trail.y(1));
-plt_radius = plot(circ_points.x,circ_points.y);
-plt_outline = plot(outlines{1}.x,outlines{1}.y);
-plt_wypt = plot(robot.wypt_hist{1}.x,robot.wypt_hist{1}.y,"x","MarkerSize",10,"DisplayName","Waypoint");
-head_scale = 0.5;
-plt_heading = quiver(trail.x(1),...
-    trail.y(1),...
-    head_scale*cos(trail.theta(1)),...
-    head_scale*sin(trail.theta(1)),...
-    "DisplayName","Heading",...
-    "LineWidth",2);
-plt_proj = plot(proj_mots(1).x,proj_mots(1).y,...
-    "DisplayName","Projected Motion",...
-    "LineWidth",2);
-plt_trail = plot(xs,ys,"DisplayName","Trail",...
-    "LineWidth",2);
-
-axis equal;
-grid on;
-xlim([-2.5,1]);
-ylim([-2.5,1.5]);
-xlabel("X Position (m)");
-ylabel("Y Position (m)");
-title("Experiments");
-legend([plt_r,plt_proj],"Location","eastoutside");
-open(vid);
-for i = 1:length(delts)
-    plt_r.XData = trail.x(i);
-    plt_r.YData = trail.y(i);
-    plt_outline.XData = outlines{i}.x;
-    plt_outline.YData = outlines{i}.y;
-    plt_heading.XData = trail.x(i);
-    plt_heading.YData = trail.y(i);
-    plt_heading.UData = head_scale*cos(trail.theta(i));
-    plt_heading.VData = head_scale*sin(trail.theta(i));
-    plt_wypt.XData = robot.wypt_hist{i}.x;
-    plt_wypt.YData = robot.wypt_hist{i}.y;
-    plt_proj.XData = proj_mots(i).x;
-    plt_proj.YData = proj_mots(i).y;
-    circ_points = drawCirc(robot.rs(i),trail.x(i),trail.y(i));
-    plt_radius.XData = circ_points.x;
-    plt_radius.YData = circ_points.y;
-    xs = [xs trail.x(i)];
-    ys = [ys trail.y(i)];
-    plt_trail.XData = xs;
-    plt_trail.YData = ys;
-    frame = getframe(gcf);
-    writeVideo(vid,frame);
-    pause(delts(i));
-end
-close(vid);
