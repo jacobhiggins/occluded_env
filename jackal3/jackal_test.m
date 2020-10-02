@@ -17,12 +17,14 @@ catch
 end
 %% 
 
-manual_drive = false;
+manual_drive = true;
 
 robot = jackal_real();
 robot.init_params();
 map = map_real();
 map.init_params(robot);
+vis = visualizer();
+vis.init(robot,map);
 
 total_time = 20.0;
 tic;
@@ -47,10 +49,13 @@ while toc < total_time && ~map.stop
    if ~manual_drive
        robot.pub_cmd();
    end
+   vis.update(robot,map);
 end
 
 if ~manual_drive
     robot.stop();
 end
+
+vis.close();
 
 save("robot_experiment.mat","robot","map");

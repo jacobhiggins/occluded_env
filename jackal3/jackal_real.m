@@ -55,7 +55,8 @@ classdef jackal_real < handle
        MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
        MPCoutput = struc('x',[],'u',[]);
        large_num = 100000;
-       ku = struct("areas",[0.0]);
+       ku = struct("areas",[0.0],"poly",struct("x",[-100 -100 -99 -99],"y",[-100 -99 -99 -100]));
+       kus = [];
        sub_pos;
        sub_vel;
        sub_joy;
@@ -76,7 +77,8 @@ classdef jackal_real < handle
        joy_buttons = [];
        JOY_X = 1;
        JOY_O = 2;
-       outlines;
+       outline = struct("x",[],"y",[]);
+       outlines = [];
        last_sec = false;
    end
    methods
@@ -109,6 +111,7 @@ classdef jackal_real < handle
            obj.wypt.y = obj.position.y;
            obj.r = 3;
            obj.maxRad = 3;
+           obj.outline = obj.square_points();
        end
        function get_joy(obj)
            joy_msg = receive(obj.sub_joy,1);
@@ -212,7 +215,8 @@ classdef jackal_real < handle
        function set_radius(obj,xm2,ym2,theta2,dist_frac)
            r = obj.maxRad;
            if(obj.position.y > 0) % TODO: fix bug in radius of 2nd hallway
-              return 
+               obj.r = r;
+               return
            end
            theta = atan2(obj.corner.mpc.y-obj.position.y,obj.corner.mpc.x-obj.position.x); % TODO: change mpc corner to wypt corner
            if theta ~= theta2
@@ -320,11 +324,11 @@ classdef jackal_real < handle
               yc_l = 0;
            end
 %            if obj.rc_active
-%               perc_r_weight = 500; 
+              perc_r_weight = 500; 
 %            else
 %               perc_r_weight = 0.0005;
 %            end
-           perc_r_weight = 0.00005;
+%            perc_r_weight = 0.00005;
 %            perc_r_weight = 50;
            
            % If projected motion doesn't reach corner, don't set slope
@@ -451,6 +455,7 @@ classdef jackal_real < handle
            obj.cmd_inputs.omegas = [obj.cmd_inputs.omegas obj.cmd_input.omega];
            obj.rs = [obj.rs obj.r];
            obj.ts = [obj.ts obj.t];
+           obj.outline = obj.square_points();
            obj.outlines{end+1} = obj.square_points();
            obj.wypt_hist{end+1} = obj.wypt;
 %            obj.LOSs = [obj.LOSs obj.r];
