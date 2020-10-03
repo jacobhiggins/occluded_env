@@ -42,10 +42,18 @@ classdef map_real < handle
            obj.model_traj.wypt_bases.ys(3) = obj.corner.y + obj.model_traj.offset;
        end
        function check_stop_experiment(obj,p)
+           persistent last_sample_time;
+           if isempty(last_sample_time)
+              last_sample_time = toc; 
+           end
+           if toc - last_sample_time < min(1/p.MPC_Hz,0.1)
+              return; 
+           end
            p.get_joy();
            if p.joy_buttons(p.JOY_O)
                obj.stop = true;
            end
+           last_sample_time = toc;
        end
        function ku = knownunknown(obj,p)
            ku.area = 0;

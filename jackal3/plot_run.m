@@ -1,6 +1,6 @@
 %% Plotting params
 
-show_vid= false;
+show_vid= true;
 warning('off','ros:mlros:common:LoadedObjectInvalid');
 
 %% Load Data

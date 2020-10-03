@@ -67,10 +67,10 @@ int main()
 
   ocp.minimizeLSQEndTerm( WN, hN );
 
-  ocp.subjectTo( -4 <= ax <= 4 );
-  ocp.subjectTo( -4 <= ay <= 4 );
-  ocp.subjectTo( -2 <= vx <= 2 );
-  ocp.subjectTo( -2 <= vy <= 2 );
+  ocp.subjectTo( -0.5 <= ax <= 0.5 );
+  ocp.subjectTo( -0.5 <= ay <= 0.5 );
+  ocp.subjectTo( -1 <= vx <= 1 );
+  ocp.subjectTo( -1 <= vy <= 1 );
   ocp.subjectTo( left_bound - x - epsilon <= 0 );
   ocp.subjectTo( x - epsilon - m_right*y - right_bound <= 0);
   ocp.subjectTo( y - upper_bound - epsilon <= 0 );
