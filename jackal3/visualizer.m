@@ -13,14 +13,15 @@ classdef visualizer < handle
        plt_proj
        plt_ku
        plts = [];
-       video = struct("record",false,"writer",VideoWriter("vid.avi"));
+       video = struct("record",true,"writer",VideoWriter("vid.avi"));
    end
    methods
        function init(obj,rob,map)
+           close all;
            obj.fig = figure(1);
            hold on;
            
-           obj.plt_wall = patch([map.corner.x,10,10,map.corner.x],[map.corner.x,map.corner.y,-10,-10],[0.5 0.5 0.5]);
+           obj.plt_wall = patch([map.corner.x,10,10,map.corner.x],[map.corner.y,map.corner.y,-10,-10],[0.5 0.5 0.5]);
            
            obj.plt_wall_limit = plot([rob.corner.mpc.x rob.corner.mpc.x],[rob.corner.mpc.y -10],'--');
            

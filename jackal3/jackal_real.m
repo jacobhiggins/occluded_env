@@ -50,7 +50,7 @@ classdef jackal_real < handle
        current_owall = -100; % current outer wall distance from corner
        next_owall = -100; % next hallway wall distance
        % MPC vars
-       N = 50; % Control Horizon
+       N = 40; % Control Horizon
        Nu = 3; % Decision variables
        MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
        MPCoutput = struc('x',[],'u',[]);
@@ -83,7 +83,7 @@ classdef jackal_real < handle
        outline = struct("x",[],"y",[]);
        outlines = [];
        last_sec = false;
-       MPC_Hz = 20; % OG: 10
+       MPC_Hz = 8; % OG: 10
    end
    methods
        function init_params(obj)
@@ -91,14 +91,15 @@ classdef jackal_real < handle
            obj.sub_vel = rossubscriber("/odometry/filtered");
            obj.sub_joy = rossubscriber("/bluetooth_teleop/joy");
            obj.pub = rospublisher("/jackal_velocity_controller/cmd_vel","geometry_msgs/Twist");
+           obj.get_pose();
            obj.R = 0.075;
            obj.L = 0.42;
            obj.max_w = 26.667; % Max rotation for single wheel
            obj.max_omega = 1.0; % Max angular rotation for heading
-           obj.max_v = 1;
+           obj.max_v = 1.5;
            obj.size = 0.25; % m, max radius
            obj.dd = DifferentialDrive(obj.R,obj.L);
-           obj.dt = 0.1;
+           obj.dt = 1/obj.MPC_Hz;
            obj.t = 0.0;
            obj.get_pose();
            obj.theta = pi/2;
@@ -129,10 +130,10 @@ classdef jackal_real < handle
               old_pos.x = pos_msg.Transform.Translation.X;
               old_pos.y = pos_msg.Transform.Translation.Y;
               old_pos.t = toc;
-%               pause(0.1);
            end
            if isempty(last_sub_time)
               last_sub_time = toc; 
+              pause(1/obj.MPC_Hz);
            end
            if (toc - last_sub_time) < 1/obj.MPC_Hz
               return;
@@ -149,11 +150,12 @@ classdef jackal_real < handle
                pos_msg.Transform.Rotation.Y,...
                pos_msg.Transform.Rotation.Z];
            R = quat2rotm(q);
-           if abs(obj.vels.y) < 0.01 && abs(obj.vels.x) < 0.01
+           if abs(obj.vels.y) < 0.1 && abs(obj.vels.x) < 0.1
                obj.theta = pi/2;
 %                obj.theta = -atan2(R(1,2),R(1,1)) + pi/2; %% Get correct angle from rotations
                % I think orientation of jackal3 defined in vicon is a
                % little bit off, makes jackal not go straight...
+           pause(1/obj.MPC_Hz); 
            else
                obj.theta = atan2(obj.vels.y,obj.vels.x);
            end
@@ -449,7 +451,7 @@ classdef jackal_real < handle
            if isempty(last_sample_time)
               last_sample_time = toc-1.1/obj.MPC_Hz; 
            end
-           if toc - last_sample_time < 0.95/obj.MPC_Hz
+           if toc - last_sample_time < 1/obj.MPC_Hz
                return;
            end
            start_mpc_time = toc;
@@ -536,7 +538,7 @@ classdef jackal_real < handle
            obj.MPCinput.yN = [xg yg var_des var_des];
            
            % x, y, perception right, perception left, ax, ay, epsilon
-           A = diag([5 5 0.000005 perc_l_weight 100 100 50000000]);
+           A = diag([50 50 0.000005 perc_l_weight 100 100 50000000]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
@@ -549,8 +551,10 @@ classdef jackal_real < handle
            as = obj.MPCoutput.u(1,:);
            ax = as(1);
            ay = as(2);
-           vx_cmd = vx + ax*dt;
-           vy_cmd = vy + ay*dt;
+%            vx_cmd = vx + ax*dt;
+%            vy_cmd = vy + ay*dt;
+           vx_cmd = obj.MPCoutput.x(2,3);
+           vy_cmd = obj.MPCoutput.x(2,4);
            if true
               obj.debug.is_true = true;
               obj.debug.xrs = [obj.debug.xrs;xr];
@@ -587,9 +591,14 @@ classdef jackal_real < handle
              e_theta_old = 0;
              e_theta_old_t = toc;
              v_ref_weighted = 0;
-             alpha = 0.02;
+             alpha = 0.5;
           end
-          Kw = 0.5;
+          if norm([obj.cmd_input.x,obj.cmd_input.y]) < 0.00000001
+              obj.cmd_input.v = 0;
+              obj.cmd_input.omega = 0;
+             return; 
+          end
+          Kw = 2;
           Kw_i = 1;
           Kw_d = 0.1;
           vec = [obj.cmd_input.x;obj.cmd_input.y;0];

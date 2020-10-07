@@ -50,7 +50,7 @@ classdef map_real < handle
               return; 
            end
            p.get_joy();
-           if p.joy_buttons(p.JOY_O)
+           if p.joy_buttons(p.JOY_O) %|| (p.wypt.y-p.position.y) < -0.05
                obj.stop = true;
            end
            last_sample_time = toc;

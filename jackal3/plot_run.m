@@ -87,7 +87,7 @@ if show_vid
         plt_trail.YData = ys;
         frame = getframe(gcf);
         writeVideo(vid,frame);
-        pause(delts(i));
+%         pause(delts(i));
     end
     close(vid);
 end
