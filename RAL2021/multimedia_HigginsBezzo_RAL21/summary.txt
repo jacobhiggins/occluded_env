@@ -1,0 +1,4 @@
+TITLE: Negotiating Visibility for Safe Autonomous Navigation in Occluding and Uncertain Environments
+
+This video includes simulations and experimental results for the proposed MPC-based framework to safely navigate an autonomous robot around occluding environments. The first part of the video shows simulation results that demonstrate the effect of the perception and safety objective on reducing known-unknown areas and risk of collision with other dynamic actors. A realistic scenario in a warehouse environment is also included (0:21).
+The second part of the video (0:56) shows two experiments conducted on a Jackal UGV inside our lab demonstrating the effect of the perception objective during autonomous navigation in occluding environments. Specifically, the first experiment is in an L-shaped environment while the second experiment (1:27) includes two obstacles of different dimensions.

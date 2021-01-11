@@ -11,6 +11,7 @@ close all;
 clear all;
 
 warning('off','MATLAB:gui:array:InvalidArrayShape');
+warning('off','MATLAB:polyshape:repairedBySimplify');
 
 global sim_dt
 sim_dt = 0.01;

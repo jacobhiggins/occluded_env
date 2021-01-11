@@ -5,11 +5,12 @@ function sim_UGV()
 
     global sim_dt;
     
-    map = mapA3();
+    map = mapA1();
     map.setParams();
     map.show_cornerMPC = false;
     map.show_cornerWP = false;
-    map.show_knownunknown = false;
+    map.show_knownunknown = true;
+    map.show_patches = false;
     
     robot = jackal();
     robot.setParams(map);
@@ -31,7 +32,7 @@ function sim_UGV()
         % Get waypoint for robot
         robot.get_wypt(map);
         % Scale waypoint for safety constraint
-        robot.scale_wypt(map);
+%         robot.scale_wypt(map);
         % Compute MPC commanded inputs
 %         robot.mpc_step2();
         robot.mpc_acc2vel();
@@ -73,6 +74,7 @@ function sim_UGV()
     map.postPlots(robot);
     
     % Correlation between LOS and KU area
-    save("robot.mat","robot");
-    
+    save("robot.mat","robot","map");
+    assignin("base","robot",robot);
+    assignin("base","map",map);
 end

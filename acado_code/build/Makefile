@@ -111,17 +111,17 @@ depend:
 .PHONY : depend
 
 #=============================================================================
-# Target rules for targets named vel_cmd
+# Target rules for targets named point_mass7
 
 # Build rule for target.
-vel_cmd: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 vel_cmd
-.PHONY : vel_cmd
+point_mass7: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 point_mass7
+.PHONY : point_mass7
 
 # fast build rule for target.
-vel_cmd/fast:
-	$(MAKE) -f CMakeFiles/vel_cmd.dir/build.make CMakeFiles/vel_cmd.dir/build
-.PHONY : vel_cmd/fast
+point_mass7/fast:
+	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/build
+.PHONY : point_mass7/fast
 
 #=============================================================================
 # Target rules for targets named acc_cmd
@@ -137,17 +137,30 @@ acc_cmd/fast:
 .PHONY : acc_cmd/fast
 
 #=============================================================================
-# Target rules for targets named point_mass7
+# Target rules for targets named vel_cmd
 
 # Build rule for target.
-point_mass7: cmake_check_build_system
-	$(MAKE) -f CMakeFiles/Makefile2 point_mass7
-.PHONY : point_mass7
+vel_cmd: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 vel_cmd
+.PHONY : vel_cmd
 
 # fast build rule for target.
-point_mass7/fast:
-	$(MAKE) -f CMakeFiles/point_mass7.dir/build.make CMakeFiles/point_mass7.dir/build
-.PHONY : point_mass7/fast
+vel_cmd/fast:
+	$(MAKE) -f CMakeFiles/vel_cmd.dir/build.make CMakeFiles/vel_cmd.dir/build
+.PHONY : vel_cmd/fast
+
+#=============================================================================
+# Target rules for targets named acc_cmd_local_frame
+
+# Build rule for target.
+acc_cmd_local_frame: cmake_check_build_system
+	$(MAKE) -f CMakeFiles/Makefile2 acc_cmd_local_frame
+.PHONY : acc_cmd_local_frame
+
+# fast build rule for target.
+acc_cmd_local_frame/fast:
+	$(MAKE) -f CMakeFiles/acc_cmd_local_frame.dir/build.make CMakeFiles/acc_cmd_local_frame.dir/build
+.PHONY : acc_cmd_local_frame/fast
 
 acc_cmd.o: acc_cmd.cpp.o
 
@@ -175,6 +188,33 @@ acc_cmd.s: acc_cmd.cpp.s
 acc_cmd.cpp.s:
 	$(MAKE) -f CMakeFiles/acc_cmd.dir/build.make CMakeFiles/acc_cmd.dir/acc_cmd.cpp.s
 .PHONY : acc_cmd.cpp.s
+
+acc_cmd_local_frame.o: acc_cmd_local_frame.cpp.o
+
+.PHONY : acc_cmd_local_frame.o
+
+# target to build an object file
+acc_cmd_local_frame.cpp.o:
+	$(MAKE) -f CMakeFiles/acc_cmd_local_frame.dir/build.make CMakeFiles/acc_cmd_local_frame.dir/acc_cmd_local_frame.cpp.o
+.PHONY : acc_cmd_local_frame.cpp.o
+
+acc_cmd_local_frame.i: acc_cmd_local_frame.cpp.i
+
+.PHONY : acc_cmd_local_frame.i
+
+# target to preprocess a source file
+acc_cmd_local_frame.cpp.i:
+	$(MAKE) -f CMakeFiles/acc_cmd_local_frame.dir/build.make CMakeFiles/acc_cmd_local_frame.dir/acc_cmd_local_frame.cpp.i
+.PHONY : acc_cmd_local_frame.cpp.i
+
+acc_cmd_local_frame.s: acc_cmd_local_frame.cpp.s
+
+.PHONY : acc_cmd_local_frame.s
+
+# target to generate assembly for a file
+acc_cmd_local_frame.cpp.s:
+	$(MAKE) -f CMakeFiles/acc_cmd_local_frame.dir/build.make CMakeFiles/acc_cmd_local_frame.dir/acc_cmd_local_frame.cpp.s
+.PHONY : acc_cmd_local_frame.cpp.s
 
 point_mass7.o: point_mass7.cpp.o
 
@@ -237,13 +277,17 @@ help:
 	@echo "... clean"
 	@echo "... depend"
 	@echo "... edit_cache"
-	@echo "... vel_cmd"
-	@echo "... acc_cmd"
-	@echo "... point_mass7"
 	@echo "... rebuild_cache"
+	@echo "... point_mass7"
+	@echo "... acc_cmd"
+	@echo "... vel_cmd"
+	@echo "... acc_cmd_local_frame"
 	@echo "... acc_cmd.o"
 	@echo "... acc_cmd.i"
 	@echo "... acc_cmd.s"
+	@echo "... acc_cmd_local_frame.o"
+	@echo "... acc_cmd_local_frame.i"
+	@echo "... acc_cmd_local_frame.s"
 	@echo "... point_mass7.o"
 	@echo "... point_mass7.i"
 	@echo "... point_mass7.s"

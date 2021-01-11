@@ -1,6 +1,8 @@
 function simulation()
+    global sim_dt;
     % Load map
-    map = mapA3();
+%     map = mapA3();
+    map = mapA1();
 %     map = mapB();
     map.setParams();
     map.show_cornerMPC = false;
@@ -36,7 +38,7 @@ function simulation()
         p.motion_step();
         map.update_probs(p);
         % Update plots
-        map.update_plot(p);
+        map.update_plot(p,sim_dt);
         % Check map's end condition
         map.check_flag(p);
     end

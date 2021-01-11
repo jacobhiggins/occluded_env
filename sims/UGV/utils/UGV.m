@@ -51,7 +51,7 @@ classdef UGV < handle
       MPCinput = struct('x0',[],'x',[],'y',[],'yN',[],'W',[],'WN',[]);
       MPCoutput = struc('x',[],'u',[]);
       large_num = 100000;
-      ku = struct("areas",[0.0]);
+      ku = struct("areas",[0.0],"polys",[]);
       debug = struct("xrs",[],...
           "vxs",[],...
           "vys",[],...
@@ -63,6 +63,8 @@ classdef UGV < handle
           "e_thetas",[],...
           "w_cmds",[],...
           "is_true",false);
+      safe = false;
+      stop_dist = 0.5;
    end
    methods
        function setParams(obj,map)
@@ -117,6 +119,7 @@ classdef UGV < handle
           if dely_rc > 0
               curr_rc = min(curr_rc + 1,size(map.corners_r,1));
               obj.rc_active = false;
+              obj.safe = false;
           end
           
           
@@ -241,6 +244,7 @@ classdef UGV < handle
 %            obj.wypt.x = obj.x + del_vec(1);
 %            obj.wypt.y = obj.y + del_vec(2);
            % NEW CODE, 09/02/2020
+           obj.shift_wypt(map);
        end
        function get_wypt2(obj,map)
            % New method of setting placement of waypoint
@@ -296,6 +300,102 @@ classdef UGV < handle
            obj.wypt.x = obj.x + dist*cos(theta);
            obj.wypt.y = obj.y + dist*sin(theta);
        end
+       
+       function shift_wypt(obj,map) % NEW 09/23/2020
+           persistent I_old; % index of last waypoint
+           if isempty(I_old)
+               I_old = 0;
+           end
+           % Use expected distance to collision for safety
+           % If not safe, follow model traj backwards until you find a safe
+           % point. Stop at corner
+           dist = obj.expected_dist2coll(map,obj.wypt);
+           if dist > obj.stop_dist || dist < 0
+               if dist > obj.stop_dist
+                   obj.safe = true;
+               end
+               return;
+           end
+           %            if ~obj.safe
+           % Get next closest point on model trajectory
+           [~,I] = min(vecnorm([map.model_traj.points(:,1),map.model_traj.points(:,2)]-[obj.wypt.x,obj.wypt.y],2,2));
+           test_point.x = map.model_traj.points(I,1);
+           test_point.y = map.model_traj.points(I,2);
+           tp_primey = 100; % Initialize to enter while loop
+           while tp_primey > 0.01 && I > I_old
+               dist = obj.expected_dist2coll(map,test_point);
+               % If this point satisfies the condition, break from
+               % while loop
+               if dist > obj.stop_dist || dist < 0
+                   if dist > obj.stop_dist
+                       obj.safe = true;
+                   end
+                   break;
+               end
+               I = I - 1;
+               test_point.x = map.model_traj.points(I,1);
+               test_point.y = map.model_traj.points(I,2);
+               [~,tp_primey] = c2u(test_point.x,test_point.y,obj.x,obj.y,obj.M_mpc);
+           end
+           I_old = I; % Make sure new wypt is farther than last wypt
+           obj.wypt.x = test_point.x;
+           obj.wypt.y = test_point.y;
+       end
+       
+       function dist = expected_dist2coll(obj,map,test_point)
+           num_points = 80;
+           del_x = abs(obj.x - test_point.x);
+           del_y = abs(obj.y - test_point.y);
+           xs_probe = obj.x:del_x/num_points:test_point.x;
+           ys_probe = obj.y:del_y/num_points:test_point.y;
+           x_avg = 0.0;
+           y_avg = 0.0;
+           prob_product = 1;
+           for i = 1:num_points
+               % Get probe x-y position
+               if isempty(xs_probe)
+                   x_probe = obj.x;
+               else
+                   x_probe = xs_probe(i);
+               end
+               if isempty(ys_probe)
+                   y_probe = obj.y;
+               else
+                   y_probe = ys_probe(i);
+               end
+               % Get index of probability that is closest to that position
+               shifted_centers = abs(map.patches.centers - [x_probe;y_probe]);
+               is = logical(shifted_centers(1,:) <= map.patches.width/2).*logical(shifted_centers(2,:) <= map.hws(2)/2);
+               prob = map.patches.probs(logical(is));
+               if ~isempty(prob)
+                   prob = prob(1);
+               else
+                   prob = 1;
+               end
+               if i < num_points
+                   x_avg = x_avg + x_probe*prob_product*(1-prob);
+                   y_avg = y_avg + y_probe*prob_product*(1-prob);
+               else
+                   x_avg = x_avg + x_probe*prob_product;
+                   y_avg = y_avg + y_probe*prob_product;
+               end
+               prob_product = prob_product*prob;
+           end
+           % Get projection of waypoint on corner plane
+           [tp_primex,tp_primey] = c2u(test_point.x,test_point.y,obj.x,obj.y,obj.M_mpc);
+           [~,corner_primey] = c2u(obj.xc_mpc_r,obj.yc_mpc_r,obj.x,obj.y,obj.M_mpc);
+           y_cp_prime = corner_primey; % projection of wypt onto corner plane
+           x_cp_prime = tp_primex*corner_primey/tp_primey;
+           [x_cp,y_cp] = u2c(x_cp_prime,y_cp_prime,obj.x,obj.y,obj.M_mpc);
+           
+           % Get vector between robot and expect point of collision
+           vec_cp_avg = [x_avg-x_cp;y_avg-y_cp]; % vector from cp to wypt
+           vec_r_tp = [test_point.x-obj.x;test_point.y-obj.y]; % vector from r to wypt
+           vec_r_tp = vec_r_tp/norm(vec_r_tp); % Normalize (don't care about this distance)
+           
+           dist = vec_r_tp'*vec_cp_avg;
+       end
+       
        function set_radius(obj,xm2,ym2,theta2,dist_frac)
            r = obj.maxRad;
            if(obj.last_sec)
@@ -489,12 +589,39 @@ classdef UGV < handle
            m_r_inv = 1/m_r;
            m_l_inv = 1/m_l;
            
+           if obj.current_sec==7
+              m_r_inv = 0; 
+           end
+           
            if obj.lc_active
               perc_l_weight = 5; 
            else
               perc_l_weight = 5;
               xc_l = -50;
               yc_l = 0;
+           end
+           
+           upper_bound = 0;
+           if obj.rc_active
+               if obj.safe
+                   perc_r_weight = 0.00000005; %10000000;
+                   x_weight = 10;
+                   upper_bound = 100;
+               else
+                   perc_r_weight = 500;
+                   x_weight = 10;
+                   upper_bound = 0;
+                   %%%%
+%                    perc_r_weight = 0.00005; %10000000;
+%                    x_weight = 10;
+%                    upper_bound = 0;
+               end
+              perc_r_weight = 10000;
+%               perc_r_weight = 0.00005;
+%               x_weight = 5;
+           else
+              perc_r_weight = 0.000005;
+              x_weight = 50;
            end
            
            % If projected motion doesn't reach corner, don't set slope
@@ -534,7 +661,7 @@ classdef UGV < handle
            obj.MPCinput.yN = [xg yg var_des var_des];
            
            % x, y, perception right, perception left, ax, ay, epsilon
-           A = diag([50 500 5 perc_l_weight 25 25 50000000]);
+           A = diag([x_weight 50 perc_r_weight perc_l_weight 25 25 500]);
            
 %            if obj.current_sec==3
 %                A(3,3) = 0.000000000001;
@@ -732,12 +859,14 @@ classdef UGV < handle
              obj.debug.w_cmds = [obj.debug.w_cmds;w_cmd];
           end
           [wL,wR] = inverseKinematics(obj.dd,v_cmd,w_cmd);
-          delw = max([wL,wR]-obj.max_w);
-          wL = wL - delw;
-          wR = wR - delw;
-          tmp = max(min([wL,wR],obj.max_w),-obj.max_w);
-          wL = tmp(1);
-          wR = tmp(2);
+          if (max(wL,wR) > obj.max_w)
+              delw = max([wL,wR]-obj.max_w);
+              wL = wL - delw;
+              wR = wR - delw;
+              tmp = max(min([wL,wR],obj.max_w),-obj.max_w);
+              wL = tmp(1);
+              wR = tmp(2);
+          end
           [v,w] = forwardKinematics(obj.dd,wL,wR);
           velB = [v;0;w]; % Body velocities [vx;vy;w]
           vel = bodyToWorld(velB,[obj.x;obj.y;obj.theta]);  % Convert from body to world

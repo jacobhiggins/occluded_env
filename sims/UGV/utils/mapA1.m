@@ -3,7 +3,7 @@
 % Smaller than mapA, better for jackal/turtlebot
 classdef mapA1 < map
     properties
-       hls = [20,40,10];
+       hls = [20,30,20];
        hws = [5,5,5];
     end
     methods
@@ -54,7 +54,8 @@ classdef mapA1 < map
            % Set patches of probabilities
            obj.set_patches();
            % Suggested maximum waypoint radius
-           obj.maxRad_suggest = 10;
+           obj.maxRad_suggest = 8;
+           obj.set_modeltraj_points();
         end
         function set_wypt_base(obj)
             % Waypoint bases, n x 2
@@ -83,14 +84,14 @@ classdef mapA1 < map
             wypt_bases = obj.wypt_bases;
         end
         function set_obs(obj)
-            obs_secs = [];
-%             obs_secs = [2,2]; % Define section for obstacles
+%             obs_secs = [];
+            obs_secs = [2,2]; % Define section for obstacles
 %             obs_secs = [2];
-            obs_ls = [30,30]; % Define lengths of obstacles
-            obs_ws = [15,15]; % Define widths of obstacles
+            obs_ls = [4,4]; % Define lengths of obstacles
+            obs_ws = [2,2]; % Define widths of obstacles
             %     fracws = [1];
             %     fracls = [0.5];
-            fracws = [1,1];
+            fracws = [1,0];
             fracls = [0.5,0.1];
             num_obs = length(obs_secs);
             obj.obss = cell(1,num_obs);
@@ -133,11 +134,12 @@ classdef mapA1 < map
                 y2 = obs.h/2; % y coordinate of upper left
                 [x1,y1] = u2c(x1,y1,obs.x,obs.y,M4);
                 [x2,y2] = u2c(x2,y2,obs.x,obs.y,M4);
-                if avoid1 < 0
-                    obj.corners_l = [obj.corners_l;x1,y1;x2,y2];
-                else
-                    obj.corners_r = [obj.corners_r;x1,y1,avoid1;x2,y2,avoid1];
-                end
+%                 if avoid1 < 0
+%                     obj.corners_l = [obj.corners_l;x1,y1;x2,y2];
+%                 else
+%                     obj.corners_r = [obj.corners_r;x1,y1,avoid1;x2,y2,avoid1];
+%                 end
+                obj.corners_r = [obj.corners_r;x1,y1,avoid1;x2,y2,avoid1];
                 obj.Ms_mpc = cat(2,obj.Ms_mpc,{[1,0;0,avoid1]});
                 obj.Ms_mpc = cat(2,obj.Ms_mpc,{[0,-1*avoid1;1,0]});
                 obj.walls_mpc = [obj.walls_mpc -30 -1*(obj.hws(2)-obs.w)];
@@ -151,8 +153,8 @@ classdef mapA1 < map
             
             % Corner at end of last hallway
             obj.walls_mpc = [obj.walls_mpc -obj.hws(3)];
-            obj.corners_r = [obj.corners_r;obj.hls(2),obj.hls(1)+obj.hls(3)-obj.hws(2),1];
-            obj.corners_l = [obj.corners_l;obj.hls(2)-obj.hws(3),obj.hls(1)+obj.hls(3)-obj.hws(2)];
+            obj.corners_r = [obj.corners_r;obj.hls(2),obj.hls(1)+obj.hls(3)-obj.hws(2)+100,1];
+            obj.corners_l = [obj.corners_l;obj.hls(2)-obj.hws(3),obj.hls(1)+obj.hls(3)-obj.hws(2)+100];
             obj.Ms_mpc = cat(2,obj.Ms_mpc,eye(2));
         end
         function set_patches(obj)

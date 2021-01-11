@@ -55,6 +55,7 @@ classdef mapA2 < map
            obj.set_patches();
            % Suggested maximum waypoint radius
            obj.maxRad_suggest = 10;
+           obj.set_modeltraj_points();
         end
         function set_wypt_base(obj)
             % Waypoint bases, n x 2
@@ -78,6 +79,7 @@ classdef mapA2 < map
             end
             obj.wypt_bases = [obj.wypt_bases;obj.hls(2)-obj.hws(3)/2,max(obj.hls(1)-obj.hws(2)/2,obj.wypt_bases(end,2))];
             obj.wypt_bases = [obj.wypt_bases;obj.hls(2)-obj.hws(3)/2,0];
+            obj.set_modeltraj_points();
         end
         function wypt_bases = get_wypt_bases(obj)
             wypt_bases = obj.wypt_bases;
@@ -86,12 +88,12 @@ classdef mapA2 < map
             obs_secs = [];
 %             obs_secs = [2,2]; % Define section for obstacles
 %             obs_secs = [2];
-            obs_ls = [30,30]; % Define lengths of obstacles
-            obs_ws = [15,15]; % Define widths of obstacles
+            obs_ls = [3,3]; % Define lengths of obstacles
+            obs_ws = [1,1]; % Define widths of obstacles
             %     fracws = [1];
             %     fracls = [0.5];
-            fracws = [1,1];
-            fracls = [0.5,0.1];
+            fracws = [1,0];
+            fracls = [0.3,0.0];
             num_obs = length(obs_secs);
             obj.obss = cell(1,num_obs);
             for i = 1:num_obs
@@ -170,5 +172,6 @@ classdef mapA2 < map
                obj.end_flag = false; 
             end
         end
+        
     end
 end

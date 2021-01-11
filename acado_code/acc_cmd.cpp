@@ -3,6 +3,8 @@
 
 int main()
 {
+  
+  double x_offset = 0;
 
   USING_NAMESPACE_ACADO
 
@@ -11,13 +13,14 @@ int main()
   DifferentialState vx;
   DifferentialState vy;
   DifferentialState phi_right;
-  DifferentialState phi_left;
-  DifferentialState xc_left;
-  DifferentialState yc_left;
+  // DifferentialState phi_left;
+  // DifferentialState xc_left;
+  // DifferentialState yc_left;
   DifferentialState left_bound;
   DifferentialState right_bound;
   DifferentialState upper_bound;
-  DifferentialState m_left; // Slope for robot-to-corner boundary on left side
+  // DifferentialState max_vel;
+  // DifferentialState m_left; // Slope for robot-to-corner boundary on left side
   DifferentialState m_right;  // Slope for robot-to-corner boundary on right side
   DifferentialState dum1;
   DifferentialState dum2;
@@ -26,6 +29,7 @@ int main()
   Control ax;
   Control ay;
   Control epsilon;
+  // Control epsilon_vel;
 
   DifferentialEquation f;
 
@@ -35,25 +39,27 @@ int main()
   f << dot(vx) == ax;
   f << dot(vy) == ay;
   
-  f << dot(phi_right) == (vy/x - ((y*vx)/pow(x,2)))/(1 + pow(y/x,2))/y - atan(y/x)*vy/pow(y,2); // Phi over y
-  f << dot(phi_left) == (vy/(x - xc_left) - vx*(y-yc_left)/pow(x-xc_left,2))/(1 + pow((y-yc_left)/(x-xc_left),2))/(y-yc_left)
-        - vy*atan((y-yc_left)/(x-xc_left))/pow(y-yc_left,2);
+  f << dot(phi_right) == (vy/(x) - (((y+dum1)*vx)/pow(x,2)))/(1 + pow((y+dum1)/x,2))/(y+dum1) - atan((y+dum1)/(x))*vy/pow((y+dum1),2); // Phi over y
+  // f << dot(phi_left) == (vy/(x - xc_left) - vx*(y-yc_left)/pow(x-xc_left,2))/(1 + pow((y-yc_left)/(x-xc_left),2))/(y-yc_left)
+  //       - vy*atan((y-yc_left)/(x-xc_left))/pow(y-yc_left,2);
 
-  f << dot(xc_left) == 0;
-  f << dot(yc_left) == 0;
+  // f << dot(xc_left) == 0;
+  // f << dot(yc_left) == 0;
 
   f << dot(left_bound) == 0; // Location of left wall, not to hit
   f << dot(right_bound) == 0; // Location of right wall, not to hit
   f << dot(upper_bound) == 0; // Corner location when unsafe
-  f << dot(m_left) == 0;
+  // f << dot(max_vel) == 0;
+  // f << dot(m_left) == 0;
   f << dot(m_right) == 0;
 
-  f << dot(dum1) == epsilon;
+  f << dot(dum1) == -1*epsilon;
+  // f << dot(dum2) == epsilon_vel;
 
   // Reference funciton
   Function h, hN;
-  h << x << y <<  phi_right << phi_left << ax << ay << epsilon;
-  hN << x << y << phi_right << phi_left;
+  h << x << y <<  phi_right << ax << ay << epsilon;
+  hN << x << y << phi_right;
 
   // Weigting Matrices
   BMatrix W = eye<bool>( h.getDim() );
@@ -67,10 +73,11 @@ int main()
 
   ocp.minimizeLSQEndTerm( WN, hN );
 
-  ocp.subjectTo( -4 <= ax <= 4 );
-  ocp.subjectTo( -4 <= ay <= 4 );
-  ocp.subjectTo( -2 <= vx <= 2 );
-  ocp.subjectTo( -2 <= vy <= 2 );
+  ocp.subjectTo( -1 <= ax <= 1 );
+  ocp.subjectTo( -1 <= ay <= 1 );
+  // ocp.subjectTo( -2 <= vx <= 2 );
+  // ocp.subjectTo( -2 <= vy <= 2 );
+  ocp.subjectTo( pow(vx,2) + pow(vy,2) - 2 - epsilon<= 0);
   ocp.subjectTo( left_bound - x - epsilon <= 0 );
   ocp.subjectTo( x - epsilon - m_right*y - right_bound <= 0);
   ocp.subjectTo( y - upper_bound - epsilon <= 0 );

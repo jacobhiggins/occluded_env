@@ -1,9 +1,12 @@
 %% Lidar Sensor Example
 % Copyright 2018-2019 The MathWorks, Inc.
 close all
-
+addpath("C:\Users\bezzo\Documents\GitHub\occluded_env\robotsim\mathworks-robotics-mobile-robotics-simulation-toolbox-7066fa0\src\*");
+% addpath('C:\Users\bezzo\Documents\GitHub\occluded_env\robotsim/mathworks-robotics-mobile-robotics-simulation-toolbox-7066fa0\src\kinematics')
+addpath(genpath("../../../src"));
 %% Create environment
-load exampleMap
+load ../../exampleMap
+
 
 % Create lidar sensor
 lidar = LidarSensor;

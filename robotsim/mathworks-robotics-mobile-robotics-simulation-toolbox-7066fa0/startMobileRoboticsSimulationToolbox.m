@@ -6,8 +6,8 @@
 
 % Set up path
 addpath(genpath('examples'))
-addpath(genpath('src'))
+addpath(genpath('src\*'))
 addpath(genpath('doc'))
 
 % Open the getting started guide
-edit GettingStarted
+% edit GettingStarted

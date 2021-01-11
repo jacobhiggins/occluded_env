@@ -16,6 +16,7 @@ classdef map < handle
         boxs % Used in is_visible function
         patches = struct("num",10,"xstart",0.0,"xend",0.0,"ybottom",0.0,"ytop",0.0,"width",0.0,"centers",[]); % Patches of uncertainty
         end_flag = true; % true when the sim should end
+        model_traj = struct("points",[]);
         % **** Main Plots ****
         plt_p % graphic handle for point
         plt_wypt % graphic handle for waypoint
@@ -78,12 +79,22 @@ classdef map < handle
             hold on;
             % Save figure handle (for video)
             obj.fig_main = gcf;
+            % Show known unknown area
+            if obj.show_knownunknown
+               corner.x = p.xc_mpc_r;
+               corner.y = p.yc_mpc_r;
+               ku_mpc = obj.knownunknown(p,corner);
+               ku = ku_mpc;
+               obj.plt_knownunknown = fill(ku.poly.x,ku.poly.y,'r',"DisplayName","Unknown Area");
+               obj.plts = [obj.plts obj.plt_knownunknown];
+            end
             % Walls
             gray = [0.5 0.5 0.5];
             for i = 1:length(obj.walls)
                wall = obj.walls{i};
                patch(wall.x,wall.y,gray);
             end
+            
             % Show patches
             if obj.show_patches
                 for i = 0:(obj.patches.num-1)
@@ -117,12 +128,7 @@ classdef map < handle
                obj.plt_FOV = plot(FOV_shape.x,FOV_shape.y,"--","DisplayName","FOV");
                obj.plts = [obj.plts obj.plt_FOV];
             end
-            % Show known unknown area
-            if obj.show_knownunknown
-               ku = obj.knownunknown(p);
-               obj.plt_knownunknown = fill(ku.poly.x,ku.poly.y,'r',"DisplayName","Unknown Area");
-               obj.plts = [obj.plts obj.plt_FOV];
-            end
+            
             % Show projected motion
             if obj.show_proj
                 obj.plt_proj = plot(p.proj_mot.x,p.proj_mot.y,'r-','LineWidth',3,'DisplayName','Projected Path');
@@ -241,7 +247,14 @@ classdef map < handle
                obj.plt_FOV.YData = FOV_shape.y;
             end
             if obj.show_knownunknown
-               ku = obj.knownunknown(p);
+               corner.x = p.xc_mpc_r;
+               corner.y = p.yc_mpc_r;
+               ku_mpc = obj.knownunknown(p,corner);
+               corner.x = p.xc_wp;
+               corner.y = p.yc_wp;
+               ku_wp = obj.knownunknown(p,corner);
+%                ku = ku_mpc;
+               ku = obj.combine_kus(ku_wp,ku_mpc);
                try
                    obj.plt_knownunknown.XData = ku.poly.x;
                    obj.plt_knownunknown.YData = ku.poly.y;
@@ -250,6 +263,7 @@ classdef map < handle
                    obj.plt_knownunknown.YData = [-100,-100,-99,-99];
                end
                p.ku.areas = [p.ku.areas ku.area];
+               p.ku.polys = [p.ku.polys ku.poly];
             end
             % Update commanded inputs
             if obj.show_cmd
@@ -353,7 +367,8 @@ classdef map < handle
             post_data.vs = vs;
             post_data.ts = ts;
             post_data.LOSs = LOSs;
-            post_data.ku = p.ku.areas;
+            post_data.ku.areas = p.ku.areas;
+            post_data.ku.polys = p.ku.polys;
             assignin('base','post_data',post_data);
         end
         function isVis = isVisible(obj,corner,p)
@@ -375,12 +390,20 @@ classdef map < handle
                 isVis = false;
             end
         end
-        function ku = knownunknown(obj,p)
+        function ku = knownunknown(obj,p,corner)
+            persistent boxes;
+            if isempty(boxes)
+                for i = 1:length(obj.boxs)
+                   box = obj.boxs{i};
+                   box_shape = polyshape(box.x,box.y);
+                   boxes = [boxes box_shape];
+                end
+            end
             ku.area = 0;
             ku.poly.x = [-1000,-999,-999,-1000];
             ku.poly.y = [-1000,-1000,-999,-999];
-            xc = p.xc_mpc_r;
-            yc = p.yc_mpc_r;
+            xc = corner.x;
+            yc = corner.y;
            [x,y] = c2u(p.x,p.y,xc,yc,p.M_mpc);
            hw2 = abs(p.next_owall);
            
@@ -433,19 +456,45 @@ classdef map < handle
 %                 del_phi = phi_2 - phi_1;
                 extra = p.M_mpc\([x;y] + p.maxRad*[cos(phi_2:-0.157:phi_1);sin(phi_2:-0.157:phi_1)]) + [xc;yc];
                 
-                ku.poly.x = [xc;m(1);u(1);extra(1,:)';l(1)];
-                ku.poly.y = [yc;m(2);u(2);extra(2,:)';l(2)];
+%                 ku.poly.x = [xc;m(1);u(1);extra(1,:)';l(1)];
+%                 ku.poly.y = [yc;m(2);u(2);extra(2,:)';l(2)];
+                
+                % Hardcoding extra bit, should change later
+                ku.poly.x = [xc;m(1);u(1);extra(1,:)';l(1);l(1);xc];
+                if abs(l(1)-xc) < 0.0001
+                   foo = 0; 
+                else
+                   foo = 2; 
+                end
+                ku.poly.y = [yc;m(2);u(2);extra(2,:)';l(2);l(2)-foo;yc-foo];
                 
             elseif ~isempty(xl)
                 phi_2 = atan2(ym-y,xm-x);
                 extra = p.M_mpc\([x;y] + p.maxRad*[cos(phi_2:-0.157:phi_1);sin(phi_2:-0.157:phi_1)]) + [xc;yc];
                 
                 
-                ku.poly.x = [xc;m(1);extra(1,:)';l(1)];
-                ku.poly.y = [yc;m(2);extra(2,:)';l(2)];
+%                 ku.poly.x = [xc;m(1);extra(1,:)';l(1)];
+%                 ku.poly.y = [yc;m(2);extra(2,:)';l(2)];
+                
+                % Hardcoding extra bit, should change later
+                ku.poly.x = [xc;m(1);extra(1,:)';l(1);l(1);xc];
+                if abs(l(1)-xc) < 0.0001
+                   foo = 0; 
+                else
+                   foo = 2; 
+                end
+                ku.poly.y = [yc;m(2);extra(2,:)';l(2);l(2)-foo;yc-foo];
             end
             ku.area = polyarea(ku.poly.x,ku.poly.y);
-           
+            if ~isempty(obj.obss)
+                ku_poly = polyshape(ku.poly.x,ku.poly.y);
+                overlap_area = 0;
+                for i = 1:length(boxes)
+                    poly_intersect = intersect(ku_poly,boxes(i));
+                    overlap_area = overlap_area + polyarea(poly_intersect.Vertices(:,1),poly_intersect.Vertices(:,2));
+                end
+                ku.area = ku.area - overlap_area;
+            end
         end
         function update_probs(obj,p)
             p_z1_m1 = 0.5;
@@ -466,12 +515,38 @@ classdef map < handle
             end
             % Project into the future
             if abs(obj.patches.centers(2,1)-p.y) > obj.hws(2)/2 % If far enough away
-                for t = p.dt:p.dt:max(obj.patches.centers(2,1)-p.y,0)/p.vy
+                for t = p.dt:p.dt:max(obj.patches.centers(2,1)-p.y,0)/p.max_v
                     for i = 1:obj.patches.num-1
                         obj.patches.probs(i) = p_move*obj.patches.probs(i+1) + p_stay*obj.patches.probs(i);
                     end
                 end
             end
+        end
+        function set_modeltraj_points(obj)
+            num_points = 100; % 100 points between each wypt base
+            for i = 1:size(obj.wypt_bases,1)-1
+                wypta = obj.wypt_bases(i,:);
+                wyptb = obj.wypt_bases(i+1,:);
+                vec = (wyptb - wypta);
+                vec = vec/num_points;
+                points = (1:num_points)'*vec + wypta;
+                obj.model_traj.points = [obj.model_traj.points;points];
+            end
+        end
+        function ku = combine_kus(obj,ku1,ku2)
+           if ku1.area > 0.0001 && ku2.area > 0.00001
+               poly1 = polyshape(ku1.poly.x,ku1.poly.y);
+               poly2 = polyshape(ku2.poly.x,ku2.poly.y);
+               poly_combo = union(poly1,poly2);
+               ku.poly.x = poly_combo.Vertices(:,1);
+               ku.poly.y = poly_combo.Vertices(:,2);
+               ku.area = polyarea(ku.poly.x,ku.poly.y);
+           elseif ku1.area > 0.0001
+               ku = ku1;
+               return;
+           else
+               ku = ku2;
+           end
         end
     end
 end
