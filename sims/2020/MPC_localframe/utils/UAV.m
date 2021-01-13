@@ -31,14 +31,14 @@ classdef UAV < AMR
             pos_in = [obj.process.state(1) obj.process.state(2)];
             vel_in = [obj.process.state(3) obj.process.state(4)];
             wypt_in = [obj.MPC_vals.wypt.x obj.MPC_vals.wypt.y];
-            right_corner_in = [obj.MPC_vals.right_corner.x,obj.MPC_vals.right_corner.y];
+            occluded_corner_in = [obj.MPC_vals.occluded_corner.x,obj.MPC_vals.occluded_corner.y];
             M = obj.MPC_vals.localframe.M;
             localframe_origin = [obj.MPC_vals.localframe.x,obj.MPC_vals.localframe.y];
             % Transform
             [x,y] = c2u(pos_in(1),pos_in(2),localframe_origin(1),localframe_origin(2),M);
             [vx,vy] = c2u(vel_in(1),vel_in(2),0.0,0.0,M);
             [xg,yg] = c2u(wypt_in(1),wypt_in(2),localframe_origin(1),localframe_origin(2),M);
-            [rc_x,rc_y] = c2u(right_corner_in(1),right_corner_in(2),localframe_origin(1),localframe_origin(2),M);
+            [rc_x,rc_y] = c2u(occluded_corner_in(1),occluded_corner_in(2),localframe_origin(1),localframe_origin(2),M);
             % Slopes
             m_r = (y-rc_y)/(x-rc_x);
             if obj.MPC_vals.right_corner.active
@@ -86,8 +86,8 @@ classdef UAV < AMR
             right_x = obj.MPC_vals.right_constraint.x;
             right_y = obj.MPC_vals.right_constraint.y;
             top = obj.MPC_vals.top_constraint;
-            [xrc,yrc] = c2u(obj.MPC_vals.right_corner.x,...
-                   obj.MPC_vals.right_corner.y,...
+            [xrc,yrc] = c2u(obj.MPC_vals.occluded_corner.x,...
+                   obj.MPC_vals.occluded_corner.y,...
                    obj.MPC_vals.localframe.x,...
                    obj.MPC_vals.localframe.y,...
                    obj.MPC_vals.localframe.M);
@@ -98,7 +98,7 @@ classdef UAV < AMR
             obj.acado_vals.MPC_input.u = zeros(obj.acado_vals.CH,obj.acado_vals.input_num);
             obj.acado_vals.MPC_input.x0 = [x,y,vx,vy,phi_r,left_m,left_x,left_y,right_m,right_x,right_y,top,corner_x,corner_y,y_offset,0];
             obj.acado_vals.MPC_input.x = repmat(obj.acado_vals.MPC_input.x0,obj.acado_vals.CH+1,1);
-            obj.acado_vals.MPC_input.y = repmat([xg, yg,0,0,0,0],obj.acado_vals.CH,1);
+            obj.acado_vals.MPC_input.y = repmat([xg,yg,0,0,0,0,0,0],obj.acado_vals.CH,1);
             obj.acado_vals.MPC_input.yN = [xg yg];
             % Set MPC weights
             % x, y, perception right, perception left, ax, ay, epsilon
@@ -107,11 +107,13 @@ classdef UAV < AMR
             A = diag([obj.MPC_vals.weights.x,...
                 obj.MPC_vals.weights.y,...
                 obj.MPC_vals.weights.perc_r,...
+                obj.MPC_vals.weights.vx,...
+                obj.MPC_vals.weights.vy,...
                 obj.MPC_vals.weights.cmd_x,...
                 obj.MPC_vals.weights.cmd_y,...
                 epsilon_weight]);
             obj.acado_vals.MPC_input.W = repmat(A,obj.acado_vals.CH,1);
-            obj.acado_vals.MPC_input.WN = diag([A(1,1) A(2,2)]);
+            obj.acado_vals.MPC_input.WN = 100*diag([A(1,1) A(2,2)]);
             % Solve
             obj.acado_vals.MPC_output = acado_solver_acc_cmd_localframe( obj.acado_vals.MPC_input );
             as = obj.acado_vals.MPC_output.u(1,:);
@@ -123,7 +125,7 @@ classdef UAV < AMR
             obj.acado_vals.projected_motion.x = proj_mot(:,1);
             obj.acado_vals.projected_motion.y = proj_mot(:,2);
         end
-        function set_MPC_weights(obj,params)
+        function set_MPC_weights(obj,map,params)
            % TODO: replace this hard-coded check with something better
 %            if obj.position.section==1
 %               obj.MPC_vals.safe = false; 
@@ -134,12 +136,14 @@ classdef UAV < AMR
            if obj.MPC_vals.right_corner.active && obj.position.section==1
                obj.MPC_vals.weights.x = params.weights.x;
                obj.MPC_vals.weights.y = params.weights.y;
+               obj.MPC_vals.weights.vx = params.weights.vx;
+               obj.MPC_vals.weights.vy = params.weights.vy;
 %                obj.MPC_vals.weights.perc_r = params.weights.perc;
                obj.MPC_vals.weights.cmd_x = params.weights.cmd_x;
                obj.MPC_vals.weights.cmd_y = params.weights.cmd_y;
 %                obj.MPC_vals.max_vel = params.max_vel;
 %                obj.MPC_vals.corner_offset = params.corner_offset;
-               if obj.safety.next_section
+               if obj.safety.next_section || map.traffic_direction==0
                    obj.MPC_vals.corner_offset = 1;
                    obj.MPC_vals.weights.perc_r = 0.001;
                else

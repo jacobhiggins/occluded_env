@@ -20,7 +20,8 @@ classdef map < handle
            "complete_points",struct("x",[],"y",[]));
        plts = containers.Map;
        plts_enable = struct("constraints",true,...
-           "freespace",true);
+           "freespace",true,...
+           "lidar",true);
        walls = {};
        epsilon = 0.01;
        vid = struct("rec",true,"writer",[]);
@@ -76,13 +77,20 @@ classdef map < handle
           occ_map_image = show(obj.occ_map);
           obj.plts("plt_occ_map") = occ_map_image;
           
+          % Plot obstacles
+          for i = 1:length(obj.walls)
+              wall= obj.walls{i};
+              black = zeros(1,3);
+              fill(wall.xs,wall.ys,black);
+          end
+          
           % Plot traffic occupancy map
           for i = 1:length(obj.traffic)
               traffic_region = obj.traffic{i};
               plt_patches{traffic_region.width.x,traffic_region.width.y} = [];
               for xi = 1:size(traffic_region.X,2)
                   x = traffic_region.X(1,xi);
-                  xs = traffic_region.delx*[-1,1] + x;
+                  xs = traffic_region.delx*[-0.5,0.5] + x;
                   for yi = 1:size(traffic_region.Y,1)
                       y = traffic_region.Y(yi,1);
                       ys = traffic_region.dely*[-1,1] + y;
@@ -97,11 +105,14 @@ classdef map < handle
           plt_FOV_area = plot(robot.perception.FOV.x,robot.perception.FOV.y,"g--");
           obj.plts("plt_FOV_area") = plt_FOV_area;
 
-          plt_lidar = scatter(robot.lidar.endpoints.x,robot.lidar.endpoints.y,...
-              8,...
-              'r',...
-              'filled');
-          obj.plts("plt_lidar") = plt_lidar;
+          % Plot lidar points
+          if obj.plts_enable.lidar
+              plt_lidar = scatter(robot.lidar.endpoints.x,robot.lidar.endpoints.y,...
+                  8,...
+                  'r',...
+                  'filled');
+              obj.plts("plt_lidar") = plt_lidar;
+          end
           
           % Plot visible area
           blue = [173, 216, 230]/255;
@@ -110,10 +121,15 @@ classdef map < handle
           
           % Plot occluded area
           red = [255 204 204]/255;
-          plt_occluded_area = scatter(robot.perception.occluded_points.x,robot.perception.occluded_points.y);
-          plt_KU_area = fill(robot.perception.KU.x,robot.perception.KU.y,red);
-          obj.plts("plt_occluded_area") = plt_occluded_area;
-          obj.plts("plt_KU_area") = plt_KU_area;
+          if robot.perception.KU.enable
+              %           plt_occluded_area = scatter(robot.perception.KU.x,robot.perception.KU.y);
+              plt_KU_area = plot(robot.perception.KU.poly);
+              plt_KU_area.FaceAlpha = 0.3;
+              plt_KU_area.FaceColor = red;
+              %           plt_KU_area = fill(robot.perception.KU.x,robot.perception.KU.y,red);
+              %           obj.plts("plt_occluded_area") = plt_occluded_area;
+              obj.plts("plt_KU_area") = plt_KU_area;
+          end
           
           % Plot reference trajectory
           plt_ref_traj = plot(obj.ref_traj.base_points.x,obj.ref_traj.base_points.y,'r--');
@@ -151,7 +167,7 @@ classdef map < handle
           if obj.plts_enable.constraints
               plt_left_constraint = plot(robot.MPC_vals.left_const_global.xs,...
                   robot.MPC_vals.left_const_global.ys,...
-                  "b--",...
+                  "c--",...
                   "LineWidth",2);
               obj.plts("plt_left_constraint") = plt_left_constraint;
               plt_right_constraint = plot(robot.MPC_vals.right_const_global.xs,...
@@ -232,14 +248,11 @@ classdef map < handle
            occ_map_image.CData = repmat(1 - occupancyMatrix(obj.occ_map),[1 1 3]);
            
            % Update lidar
-%            for i = 1:robot.lidar.num_sensors
-%               plt_lidar = obj.plts(sprintf("plt_lidar_%d",i));
-%               plt_lidar.XData = [robot.position.x robot.lidar.endpoints.x(i)];
-%               plt_lidar.YData = [robot.position.y robot.lidar.endpoints.y(i)];
-%            end
-           plt_lidar = obj.plts("plt_lidar");
-           plt_lidar.XData = robot.lidar.endpoints.x;
-           plt_lidar.YData = robot.lidar.endpoints.y;
+            if obj.plts_enable.lidar
+                plt_lidar = obj.plts("plt_lidar");
+                plt_lidar.XData = robot.lidar.endpoints.x;
+                plt_lidar.YData = robot.lidar.endpoints.y;
+            end
            
            % Update occupancy
           for i = 1:length(obj.traffic)
@@ -266,13 +279,14 @@ classdef map < handle
            plt_perc_area.XData = robot.perception.visible_area.x;
            plt_perc_area.YData = robot.perception.visible_area.y;
            
-           % Update occluded points
-           plt_occluded_area = obj.plts("plt_occluded_area");
-           plt_occluded_area.XData = robot.perception.occluded_points.x;
-           plt_occluded_area.YData = robot.perception.occluded_points.y;
-           plt_KU_area = obj.plts("plt_KU_area");
-           plt_KU_area.XData = robot.perception.KU.x;
-           plt_KU_area.YData = robot.perception.KU.y;
+           % Update occluded points + KU area
+%            plt_occluded_area = obj.plts("plt_occluded_area");
+%            plt_occluded_area.XData = robot.perception.KU.x;
+%            plt_occluded_area.YData = robot.perception.KU.y;
+            if robot.perception.KU.enable
+             plt_KU_area = obj.plts("plt_KU_area");
+             plt_KU_area.Shape = robot.perception.KU.poly;
+            end
            
            % Update freespace
            if obj.plts_enable.freespace

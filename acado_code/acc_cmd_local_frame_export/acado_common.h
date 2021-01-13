@@ -76,7 +76,7 @@ extern "C"
 /** Number of differential derivative variables. */
 #define ACADO_NXD 0
 /** Number of references/measurements per node on the first N nodes. */
-#define ACADO_NY 6
+#define ACADO_NY 8
 /** Number of references/measurements on the last (N + 1)st node. */
 #define ACADO_NYN 2
 /** Total number of QP optimization variables. */
@@ -116,11 +116,11 @@ real_t x[ 816 ];
  */
 real_t u[ 150 ];
 
-/** Column vector of size: 300
+/** Column vector of size: 400
  * 
- *  Matrix containing 50 reference/measurement vectors of size 6 for first 50 nodes.
+ *  Matrix containing 50 reference/measurement vectors of size 8 for first 50 nodes.
  */
-real_t y[ 300 ];
+real_t y[ 400 ];
 
 /** Column vector of size: 2
  * 
@@ -128,8 +128,8 @@ real_t y[ 300 ];
  */
 real_t yN[ 2 ];
 
-/** Matrix of size: 300 x 6 (row major format) */
-real_t W[ 1800 ];
+/** Matrix of size: 400 x 8 (row major format) */
+real_t W[ 3200 ];
 
 /** Matrix of size: 2 x 2 (row major format) */
 real_t WN[ 4 ];
@@ -197,8 +197,8 @@ real_t state[ 323 ];
 /** Column vector of size: 800 */
 real_t d[ 800 ];
 
-/** Column vector of size: 300 */
-real_t Dy[ 300 ];
+/** Column vector of size: 400 */
+real_t Dy[ 400 ];
 
 /** Column vector of size: 2 */
 real_t DyN[ 2 ];
@@ -212,20 +212,20 @@ real_t evGu[ 2400 ];
 /** Row vector of size: 19 */
 real_t objValueIn[ 19 ];
 
-/** Row vector of size: 6 */
-real_t objValueOut[ 6 ];
+/** Row vector of size: 8 */
+real_t objValueOut[ 8 ];
 
 /** Matrix of size: 800 x 16 (row major format) */
 real_t Q1[ 12800 ];
 
-/** Matrix of size: 800 x 6 (row major format) */
-real_t Q2[ 4800 ];
+/** Matrix of size: 800 x 8 (row major format) */
+real_t Q2[ 6400 ];
 
 /** Matrix of size: 150 x 3 (row major format) */
 real_t R1[ 450 ];
 
-/** Matrix of size: 150 x 6 (row major format) */
-real_t R2[ 900 ];
+/** Matrix of size: 150 x 8 (row major format) */
+real_t R2[ 1200 ];
 
 /** Matrix of size: 16 x 16 (row major format) */
 real_t QN1[ 256 ];

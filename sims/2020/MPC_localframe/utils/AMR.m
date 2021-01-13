@@ -6,8 +6,10 @@ classdef AMR < handle
        acc = struct("x",0.0,"y",0.0);
        MPC_vals = struct(...
            "right_corner",struct("x",0.0,"y",0.0,"active",false),...
+           "occluded_corner",struct("x",0.0,"y",0.0,"active",false),...
+           "motional_corner",struct("x",0.0,"y",0.0),...
            "left_corner",struct("x",0.0,"y",0.0),...
-           "weights",struct("x",10,"y",10,"perc_r",0.01,"cmd_x",25,"cmd_y",25),...
+           "weights",struct("x",10,"y",10,"vx",1,"vy",1,"perc_r",0.01,"cmd_x",25,"cmd_y",25),...
            "localframe",struct("s",0.0,"x",0.0,"y",0.0,"M",eye(2)),...
            "M",eye(2),...
            "wypt",struct("x",0.0,"y",0.0,"occluded",false),...
@@ -34,7 +36,7 @@ classdef AMR < handle
        perception = struct("visible_area",struct("x",[],"y",[]),...
            "FOV",struct("x",[],"y",[]),...
            "occluded_points",struct("x",[],"y",[]),...
-           "KU",struct("enable",true,"x",[],"y",[],"area",0.0));
+           "KU",struct("enable",true,"x",[],"y",[],"area",0.0,"poly",polyshape));
        safety = struct("dist2coll",10,"collision_imminent",false,"stopping_dist",100.0,...
            "next_section",0);
        physical = struct("acc_max",2,"vel_max",sqrt(2));
@@ -69,7 +71,7 @@ classdef AMR < handle
           obj.get_MPC_vals(map);
           obj.get_wypt(map);
           obj.dc = Data_collec(obj);
-          obj.get_KU(map);
+          obj.get_KU2(map);
        end
        function update_orientation(obj)
            obj.position.M = [cos(obj.position.theta) sin(obj.position.theta);...
@@ -82,8 +84,10 @@ classdef AMR < handle
               ylim = region.lims.y;
               if inpolygon(obj.position.x,obj.position.y,xlim,ylim)
                   obj.position.section = i;
-                  obj.MPC_vals.right_corner.x = region.corner(1);
-                  obj.MPC_vals.right_corner.y = region.corner(2);
+                  obj.MPC_vals.motional_corner.x = region.motional_corner(1);
+                  obj.MPC_vals.motional_corner.y = region.motional_corner(2);
+                  obj.MPC_vals.occluded_corner.x = region.occluded_corner(1);
+                  obj.MPC_vals.occluded_corner.y = region.occluded_corner(2);
                   obj.MPC_vals.M = region.M;
                   % Try setting upper bound
                   try
@@ -98,7 +102,7 @@ classdef AMR < handle
                      obj.MPC_vals.lims.left = -20;
                   end
                   
-                  if norm([obj.position.x-region.corner(1),obj.position.y-region.corner(2)]) < obj.lidar.maxRange
+                  if norm([obj.position.x-region.occluded_corner(1),obj.position.y-region.occluded_corner(2)]) < obj.lidar.maxRange
                       obj.MPC_vals.right_corner.active = true;
                   else
                       obj.MPC_vals.right_corner.active = false; 
@@ -161,8 +165,8 @@ classdef AMR < handle
            obj.MPC_vals.top_constraint = region.top_constraint;
            
            if obj.MPC_vals.right_corner.active == true
-               [xrc,yrc] = c2u(obj.MPC_vals.right_corner.x,...
-                   obj.MPC_vals.right_corner.y,...
+               [xrc,yrc] = c2u(obj.MPC_vals.motional_corner.x,...
+                   obj.MPC_vals.motional_corner.y,...
                    obj.MPC_vals.localframe.x,...
                    obj.MPC_vals.localframe.y,...
                    obj.MPC_vals.localframe.M);
@@ -223,10 +227,14 @@ classdef AMR < handle
 %            intersector = obj.perception.FOV; % Waypoint at edge of FOV
            intersector = obj.perception.visible_area; % Waypoint at edge of visible area
            [x_wypt,y_wypt,min_dist] = obj.intersection_wypt(map,current_ref_wypt,intersector);
+           [x_wypt_rot,y_wypt_rot] = c2u(x_wypt,y_wypt,0,0,obj.MPC_vals.M);
            
            % If wypt empty, iterate through other wypt base pairs until
            % intersection is found (up until last pair)
-           if isempty(y_wypt) && (current_ref_wypt < length(map.ref_traj.base_points.x)-1)
+%            if isempty(y_wypt) && (current_ref_wypt < length(map.ref_traj.base_points.x)-1)
+           % TODO: Fix waypoint switching criterea so that algorithm works
+           % for any lidar max range
+           if y_wypt<0 && (current_ref_wypt < length(map.ref_traj.base_points.x)-1)
                while current_ref_wypt < length(map.ref_traj.base_points.x)-1
                    current_ref_wypt = min(length(map.ref_traj.base_points.x)-1,current_ref_wypt+1);
                    [x_wypt,y_wypt,min_dist] = obj.intersection_wypt(map,current_ref_wypt,intersector);
@@ -407,6 +415,22 @@ classdef AMR < handle
            obj.perception.KU.y = [obj.perception.occluded_points.y(points_y>0) obj.MPC_vals.right_corner.y];
            obj.perception.KU.area = polyarea(obj.perception.KU.x,obj.perception.KU.y);
        end
+       function get_KU2(obj,map)
+           % Find known-unknown area of interest
+           
+           % Create polygons FOV, map traversable area, and visible area
+           fov = polyshape(obj.perception.FOV.x,obj.perception.FOV.y);
+           map_poly = polyshape(map.total_region.xs,map.total_region.ys);
+           visible = polyshape(obj.perception.visible_area.x,obj.perception.visible_area.y);
+           % Find intersection of FOV circle with traversable map
+           fovINTERSECTmap = intersect(fov,map_poly);
+           % Find difference of this intersection with visible area
+           ku = subtract(fovINTERSECTmap,visible);
+           obj.perception.KU.x = ku.Vertices(:,1);
+           obj.perception.KU.y = ku.Vertices(:,2);
+           obj.perception.KU.poly = ku;
+           obj.perception.KU.area = area(ku);
+       end
        function get_state(obj)
            obj.process.state = obj.filter.estimate(obj);
        end
@@ -439,9 +463,9 @@ classdef AMR < handle
        end
        function logic_step(obj,map,params)
           persistent last_outer_control;
-          obj.set_MPC_weights(params);
+          obj.set_MPC_weights(map,params);
           obj.get_MPC_vals(map);
-          obj.get_KU(map);
+          obj.get_KU2(map);
           obj.get_state();
           if  isempty(last_outer_control) || obj.start
               obj.lidar.measure(obj,map);

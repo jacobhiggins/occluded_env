@@ -7,9 +7,10 @@ addpath('../../../robotsim/mathworks-robotics-mobile-robotics-simulation-toolbox
 % addpath(genpath('../../../robotsim/mathworks-robotics-mobile-robotics-simulation-toolbox-7066fa0/src/'))
 
 close all;
-clear all;
+clear all;  
 
 warning('off','MATLAB:gui:array:InvalidArrayShape');
+warning('off','MATLAB:polyshape:repairedBySimplify');
 
 %% Run sim
 % sim_UGV();

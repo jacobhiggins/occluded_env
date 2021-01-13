@@ -65,7 +65,7 @@ int main()
 
   // Reference funciton
   Function h, hN;
-  h << x << y << phi_right << ax << ay << epsilon;
+  h << x << y << phi_right << vx << vy << ax << ay << epsilon;
   hN << x << y;
 
   // Weigting Matrices

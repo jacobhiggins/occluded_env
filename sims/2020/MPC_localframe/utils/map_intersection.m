@@ -1,8 +1,8 @@
 classdef map_intersection < map
    properties
-       hall_dims = struct("w",[3,3],"l",[10,10]);
+       hall_dims = struct("w",[3,3],"l",[20,20]);
        direction = 1; % 1 = up, -1 = down
-       traffic_direction = 1; % 1 = up, -1 = down, 0 = both, NaN = no traffic
+       traffic_direction = 0; % 1 = up, -1 = down, 0 = both, NaN = no traffic
        traffic_maxvel = 1.3; % average walking speed
        traffic_dims = struct("x",10,"y",120);
        traffic_starting_prob = 0.5;
@@ -74,14 +74,25 @@ classdef map_intersection < map
            region1.lims.x = xlim([1 1 2 2 1]);
            region1.lims.y = ylim([1 2 2 1 1]);
            region1.width = obj.hall_dims.w(1);
-           region1.corner = [obj.hall_dims.l(1)-obj.hall_dims.w(2),...
-               obj.hall_dims.l(2)/2+obj.traffic_direction*obj.hall_dims.w(1)/2];
-           region1.M = [0 obj.direction;1 0];
+           region1.motional_corner = [obj.hall_dims.l(1)-obj.hall_dims.w(2),...
+                   obj.hall_dims.l(2)/2+obj.direction*obj.hall_dims.w(1)/2];
+           if ~(obj.traffic_direction==0)
+               % if traffic is going up or down
+               region1.occluded_corner = [obj.hall_dims.l(1)-obj.hall_dims.w(2),...
+                   obj.hall_dims.l(2)/2-obj.traffic_direction*obj.hall_dims.w(1)/2];
+               region1.M = [0 obj.direction;1 0];
+               region1.curl = -obj.direction;
+           else
+               % if traffic is going both ways
+               region1.occluded_corner = [obj.hall_dims.l(1)-obj.hall_dims.w(2),...
+                   obj.hall_dims.l(2)/2+obj.hall_dims.w(1)/2];
+               region1.M = [0 1;1 0];
+               region1.curl = -1;
+           end
            region1.lims.left = -(obj.hall_dims.w(1));
            region1.localframe.wypt_vec = [1,0];
            region1.localframe.wypt_base.x = obj.ref_traj.base_points.x(1);
            region1.localframe.wypt_base.y = obj.ref_traj.base_points.y(1);
-           region1.curl = -obj.direction;
            region1.top_constraint = 10;
            obj.regions{end+1} = region1;
            % Second hallway
@@ -90,7 +101,8 @@ classdef map_intersection < map
            region2.lims.x = xlim([1 1 2 2 1]);
            region2.lims.y = ylim([1 2 2 1 1]);
            region2.width = obj.hall_dims.w(2);
-           region2.corner = [obj.hall_dims.l(1) obj.direction*100];
+           region2.occluded_corner = [obj.hall_dims.l(1) obj.direction*100];
+           region2.motional_corner = region2.occluded_corner;
            region2.M = [1 0;0 obj.direction];
            region2.lims.left = -obj.hall_dims.w(2);
            region2.localframe.wypt_vec = [0,obj.direction];
@@ -100,10 +112,10 @@ classdef map_intersection < map
            region2.top_constraint = 10;
            obj.regions{end+1} = region2;
            % Define total free space (for KU calculation)
-           xlims1 = [0 obj.hall_dims.l(1)];
+           xlims1 = [0 obj.hall_dims.l(1)-obj.dims.wall_thickness];
            ylims1 = [-obj.hall_dims.w(1) obj.hall_dims.w(1)]/2 + obj.hall_dims.l(2)/2;
            first_hallway = polyshape(xlims1([1 2 2 1 1]),ylims1([1 1 2 2 1]));
-           xlims2 = [obj.hall_dims.l(1)-obj.hall_dims.w(2) obj.hall_dims.l(1)];
+           xlims2 = [obj.hall_dims.l(1)-obj.hall_dims.w(2) obj.hall_dims.l(1)-obj.dims.wall_thickness];
            ylims2 = [-100 100] + obj.hall_dims.l(2);
            second_hallway = polyshape(xlims2([1 2 2 1 1]),ylims2([1 1 2 2 1]));
            obj.total_region.polygon = union([first_hallway second_hallway]);
@@ -140,8 +152,8 @@ classdef map_intersection < map
            elseif obj.traffic_direction == 0
                traffic_region.source_grid(1,:) = 1;
                traffic_region.source_grid(end,:) = 1;
-               traffic_region.motion_model(:) = 1/double(2*motion_model_size);
-               traffic_region.motion_model(motion_model_size+1) = 0.0;
+               traffic_region.motion_model(:) = 1/double(2*motion_model_size + 1);
+%                traffic_region.motion_model(motion_model_size+1) = 0.0;
            elseif isequal(obj.traffic_direction,NaN)
                
            end
