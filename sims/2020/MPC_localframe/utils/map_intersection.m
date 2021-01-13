@@ -1,6 +1,6 @@
 classdef map_intersection < map
    properties
-       hall_dims = struct("w",[3,3],"l",[20,20]);
+       hall_dims = struct("w",[3,3],"l",[10,20]);
        direction = 1; % 1 = up, -1 = down
        traffic_direction = 0; % 1 = up, -1 = down, 0 = both, NaN = no traffic
        traffic_maxvel = 1.3; % average walking speed

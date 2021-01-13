@@ -227,23 +227,18 @@ classdef AMR < handle
 %            intersector = obj.perception.FOV; % Waypoint at edge of FOV
            intersector = obj.perception.visible_area; % Waypoint at edge of visible area
            [x_wypt,y_wypt,min_dist] = obj.intersection_wypt(map,current_ref_wypt,intersector);
-           y_wypt_rot = 1; % Initialize so we can go into if statement below if try statement throws an error
-           empty_wypt = false;
            try
                % Try rotating-translating waypoint, fill throw an error if
                % y_wypt is empty (visible area doesn't intersect with wypta
                % -wyptb line segment
-               [~,y_wypt_rot] = c2u(x_wypt,y_wypt,obj.position.x,obj.position.y,obj.MPC_vals.M);
+               [x_wypt_rot,y_wypt_rot] = c2u(x_wypt,y_wypt,obj.position.x,obj.position.y,obj.MPC_vals.M);
            catch ME
-               if ~isequal(ME.identifier,'MATLAB:dimagree')
-                   rethrow(ME); 
-               end
-               empty_wypt = true;
+               if ~isequal(ME.identifier,)
            end
            
            % If wypt empty or wypt is behind robot (y_wypt_rot<0), iterate through other wypt base pairs until
            % intersection is found (up until last pair)
-           if (y_wypt_rot<0 || empty_wypt) && (current_ref_wypt < length(map.ref_traj.base_points.x)-1)
+           if (y_wypt_rot<0 || isempty(y_wypt_rot)) && (current_ref_wypt < length(map.ref_traj.base_points.x)-1)
                while current_ref_wypt < length(map.ref_traj.base_points.x)-1
                    current_ref_wypt = min(length(map.ref_traj.base_points.x)-1,current_ref_wypt+1);
                    [x_wypt,y_wypt,min_dist] = obj.intersection_wypt(map,current_ref_wypt,intersector);
