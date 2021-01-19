@@ -70,7 +70,7 @@ extern "C"
 /** Number of control variables. */
 #define ACADO_NU 3
 /** Number of differential variables. */
-#define ACADO_NX 16
+#define ACADO_NX 17
 /** Number of algebraic variables. */
 #define ACADO_NXA 0
 /** Number of differential derivative variables. */
@@ -104,11 +104,11 @@ extern "C"
 typedef struct ACADOvariables_
 {
 int dummy;
-/** Matrix of size: 51 x 16 (row major format)
+/** Matrix of size: 51 x 17 (row major format)
  * 
  *  Matrix containing 51 differential variable vectors.
  */
-real_t x[ 816 ];
+real_t x[ 867 ];
 
 /** Matrix of size: 50 x 3 (row major format)
  * 
@@ -134,11 +134,11 @@ real_t W[ 3200 ];
 /** Matrix of size: 2 x 2 (row major format) */
 real_t WN[ 4 ];
 
-/** Column vector of size: 16
+/** Column vector of size: 17
  * 
  *  Current state feedback vector.
  */
-real_t x0[ 16 ];
+real_t x0[ 17 ];
 
 
 } ACADOvariables;
@@ -151,51 +151,51 @@ real_t x0[ 16 ];
  */
 typedef struct ACADOworkspace_
 {
-real_t rk_dim32_swap;
+real_t rk_dim34_swap;
 
-/** Column vector of size: 32 */
-real_t rk_dim32_bPerm[ 32 ];
+/** Column vector of size: 34 */
+real_t rk_dim34_bPerm[ 34 ];
 
 /** Column vector of size: 35 */
 real_t rhs_aux[ 35 ];
 
 real_t rk_ttt;
 
-/** Row vector of size: 19 */
-real_t rk_xxx[ 19 ];
+/** Row vector of size: 20 */
+real_t rk_xxx[ 20 ];
 
-/** Matrix of size: 16 x 2 (row major format) */
-real_t rk_kkk[ 32 ];
+/** Matrix of size: 17 x 2 (row major format) */
+real_t rk_kkk[ 34 ];
 
-/** Matrix of size: 32 x 32 (row major format) */
-real_t rk_A[ 1024 ];
+/** Matrix of size: 34 x 34 (row major format) */
+real_t rk_A[ 1156 ];
 
-/** Column vector of size: 32 */
-real_t rk_b[ 32 ];
+/** Column vector of size: 34 */
+real_t rk_b[ 34 ];
 
-/** Row vector of size: 32 */
-int rk_dim32_perm[ 32 ];
+/** Row vector of size: 34 */
+int rk_dim34_perm[ 34 ];
 
-/** Column vector of size: 16 */
-real_t rk_rhsTemp[ 16 ];
+/** Column vector of size: 17 */
+real_t rk_rhsTemp[ 17 ];
 
-/** Matrix of size: 2 x 304 (row major format) */
-real_t rk_diffsTemp2[ 608 ];
+/** Matrix of size: 2 x 340 (row major format) */
+real_t rk_diffsTemp2[ 680 ];
 
-/** Matrix of size: 16 x 2 (row major format) */
-real_t rk_diffK[ 32 ];
+/** Matrix of size: 17 x 2 (row major format) */
+real_t rk_diffK[ 34 ];
 
-/** Matrix of size: 16 x 19 (row major format) */
-real_t rk_diffsPrev2[ 304 ];
+/** Matrix of size: 17 x 20 (row major format) */
+real_t rk_diffsPrev2[ 340 ];
 
-/** Matrix of size: 16 x 19 (row major format) */
-real_t rk_diffsNew2[ 304 ];
+/** Matrix of size: 17 x 20 (row major format) */
+real_t rk_diffsNew2[ 340 ];
 
-/** Row vector of size: 323 */
-real_t state[ 323 ];
+/** Row vector of size: 360 */
+real_t state[ 360 ];
 
-/** Column vector of size: 800 */
-real_t d[ 800 ];
+/** Column vector of size: 850 */
+real_t d[ 850 ];
 
 /** Column vector of size: 400 */
 real_t Dy[ 400 ];
@@ -203,23 +203,23 @@ real_t Dy[ 400 ];
 /** Column vector of size: 2 */
 real_t DyN[ 2 ];
 
-/** Matrix of size: 800 x 16 (row major format) */
-real_t evGx[ 12800 ];
+/** Matrix of size: 850 x 17 (row major format) */
+real_t evGx[ 14450 ];
 
-/** Matrix of size: 800 x 3 (row major format) */
-real_t evGu[ 2400 ];
+/** Matrix of size: 850 x 3 (row major format) */
+real_t evGu[ 2550 ];
 
-/** Row vector of size: 19 */
-real_t objValueIn[ 19 ];
+/** Row vector of size: 20 */
+real_t objValueIn[ 20 ];
 
 /** Row vector of size: 8 */
 real_t objValueOut[ 8 ];
 
-/** Matrix of size: 800 x 16 (row major format) */
-real_t Q1[ 12800 ];
+/** Matrix of size: 850 x 17 (row major format) */
+real_t Q1[ 14450 ];
 
-/** Matrix of size: 800 x 8 (row major format) */
-real_t Q2[ 6400 ];
+/** Matrix of size: 850 x 8 (row major format) */
+real_t Q2[ 6800 ];
 
 /** Matrix of size: 150 x 3 (row major format) */
 real_t R1[ 450 ];
@@ -227,26 +227,26 @@ real_t R1[ 450 ];
 /** Matrix of size: 150 x 8 (row major format) */
 real_t R2[ 1200 ];
 
-/** Matrix of size: 16 x 16 (row major format) */
-real_t QN1[ 256 ];
+/** Matrix of size: 17 x 17 (row major format) */
+real_t QN1[ 289 ];
 
-/** Matrix of size: 16 x 2 (row major format) */
-real_t QN2[ 32 ];
+/** Matrix of size: 17 x 2 (row major format) */
+real_t QN2[ 34 ];
 
-/** Column vector of size: 86 */
-real_t conAuxVar[ 86 ];
+/** Column vector of size: 95 */
+real_t conAuxVar[ 95 ];
 
-/** Row vector of size: 19 */
-real_t conValueIn[ 19 ];
+/** Row vector of size: 20 */
+real_t conValueIn[ 20 ];
 
-/** Row vector of size: 80 */
-real_t conValueOut[ 80 ];
+/** Row vector of size: 84 */
+real_t conValueOut[ 84 ];
 
 /** Column vector of size: 200 */
 real_t evH[ 200 ];
 
-/** Matrix of size: 200 x 16 (row major format) */
-real_t evHx[ 3200 ];
+/** Matrix of size: 200 x 17 (row major format) */
+real_t evHx[ 3400 ];
 
 /** Matrix of size: 200 x 3 (row major format) */
 real_t evHu[ 600 ];
@@ -254,29 +254,29 @@ real_t evHu[ 600 ];
 /** Column vector of size: 4 */
 real_t evHxd[ 4 ];
 
-/** Column vector of size: 16 */
-real_t Dx0[ 16 ];
+/** Column vector of size: 17 */
+real_t Dx0[ 17 ];
 
-/** Matrix of size: 16 x 16 (row major format) */
-real_t T[ 256 ];
+/** Matrix of size: 17 x 17 (row major format) */
+real_t T[ 289 ];
 
-/** Matrix of size: 20400 x 3 (row major format) */
-real_t E[ 61200 ];
+/** Matrix of size: 21675 x 3 (row major format) */
+real_t E[ 65025 ];
 
-/** Matrix of size: 20400 x 3 (row major format) */
-real_t QE[ 61200 ];
+/** Matrix of size: 21675 x 3 (row major format) */
+real_t QE[ 65025 ];
 
-/** Column vector of size: 800 */
-real_t Qd[ 800 ];
+/** Column vector of size: 850 */
+real_t Qd[ 850 ];
 
-/** Column vector of size: 816 */
-real_t QDy[ 816 ];
+/** Column vector of size: 867 */
+real_t QDy[ 867 ];
 
-/** Matrix of size: 150 x 16 (row major format) */
-real_t H10[ 2400 ];
+/** Matrix of size: 150 x 17 (row major format) */
+real_t H10[ 2550 ];
 
-/** Matrix of size: 200 x 16 (row major format) */
-real_t A01[ 3200 ];
+/** Matrix of size: 200 x 17 (row major format) */
+real_t A01[ 3400 ];
 
 /** Column vector of size: 200 */
 real_t pacA01Dx0[ 200 ];
@@ -318,7 +318,7 @@ real_t y[ 350 ];
 
 /** Performs the integration and sensitivity propagation for one shooting interval.
  *
- *  \param rk_eta Working array of size 19 to pass the input values and return the results.
+ *  \param rk_eta Working array of size 20 to pass the input values and return the results.
  *  \param resetIntegrator The internal memory of the integrator can be reset.
  *
  *  \return Status code of the integrator.

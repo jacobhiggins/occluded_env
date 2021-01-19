@@ -1,7 +1,7 @@
 classdef LidarSensor < handle
    properties
-      maxRange = 3;
-      num_sensors = 200;
+      maxRange = 2.7;
+      num_sensors = 500;
       angle_range = [-pi,pi]
       angles = [];
       ranges = [];

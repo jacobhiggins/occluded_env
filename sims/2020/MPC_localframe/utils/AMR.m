@@ -14,7 +14,7 @@ classdef AMR < handle
            "M",eye(2),...
            "wypt",struct("x",0.0,"y",0.0,"occluded",false),...
            "ref_wypt",struct("x",0.0,"y",0.0),...
-           "right_constraint",struct("x",1.5,"y",0.0,"theta",pi/2),...
+           "right_constraint",struct("x",1.5,"y",0.0,"theta",pi/2,"sign",1),...
            "right_const_global",struct("xs",1.5,"ys",0.0),...
            "left_constraint",struct("x",-1.5,"y",0.0,"theta",pi/2),...
            "left_const_global",struct("xs",-1.5,"ys",0.0),...
@@ -36,7 +36,8 @@ classdef AMR < handle
        perception = struct("visible_area",struct("x",[],"y",[]),...
            "FOV",struct("x",[],"y",[]),...
            "occluded_points",struct("x",[],"y",[]),...
-           "KU",struct("enable",true,"x",[],"y",[],"area",0.0,"poly",polyshape));
+           "KU",struct("enable",true,"x",[],"y",[],"area",0.0,"poly",polyshape),...
+           "ROI",polyshape);
        safety = struct("dist2coll",10,"collision_imminent",false,"stopping_dist",100.0,...
            "next_section",0);
        physical = struct("acc_max",2,"vel_max",sqrt(2));
@@ -84,6 +85,7 @@ classdef AMR < handle
               ylim = region.lims.y;
               if inpolygon(obj.position.x,obj.position.y,xlim,ylim)
                   obj.position.section = i;
+                  obj.perception.ROI = region.ROI; % Region of intrest, for KU area calculation
                   obj.MPC_vals.motional_corner.x = region.motional_corner(1);
                   obj.MPC_vals.motional_corner.y = region.motional_corner(2);
                   obj.MPC_vals.occluded_corner.x = region.occluded_corner(1);
@@ -155,7 +157,7 @@ classdef AMR < handle
 %        end
        
        function set_constraints(obj,region)
-           xl = -region.width/2;
+           xl = region.lims.left;
            yl = 0;
            thetal = pi/2;
            
@@ -176,18 +178,26 @@ classdef AMR < handle
                    obj.MPC_vals.localframe.y,...
                    obj.MPC_vals.localframe.M);
                thetar = atan2(yrc-y,xrc-x);
+               signr = sign(thetar); % NEW CODE 01/16/2021
 %                thetar = pi/2; % CHANGE BACK ******
                    
                obj.MPC_vals.right_constraint.x = xrc;
                obj.MPC_vals.right_constraint.y = yrc;
                obj.MPC_vals.right_constraint.theta = thetar;
+               obj.MPC_vals.right_constraint.sign = signr; % NEW CODE 01/16/2021
            else
-               xrc = region.width/2;
+               [xrc,yrc] = c2u(obj.MPC_vals.motional_corner.x,...
+                   obj.MPC_vals.motional_corner.y,...
+                   obj.MPC_vals.localframe.x,...
+                   obj.MPC_vals.localframe.y,...
+                   obj.MPC_vals.localframe.M);
                yrc = 0;
                thetar = pi/2;
+               signr = 1;
                obj.MPC_vals.right_constraint.x = xrc;
                obj.MPC_vals.right_constraint.y = yrc;
                obj.MPC_vals.right_constraint.theta = thetar;
+               obj.MPC_vals.right_constraint.sign = signr;
            end
            rs = [50,0,-50];
            xs_left = rs*cos(thetal) + xl;
@@ -241,21 +251,34 @@ classdef AMR < handle
                empty_wypt = true;
            end
            
+           % If waypoint is inside next region, then that's okay
+           ROI = map.regions{obj.position.section}.ROI;
+           if InPolygon(x_wypt,y_wypt,ROI.Vertices(:,1),ROI.Vertices(:,2))
+               y_wypt_rot = 1; % Do this so code doesn't search for a new wypt
+           end
+           
            % If wypt empty or wypt is behind robot (y_wypt_rot<0), iterate through other wypt base pairs until
            % intersection is found (up until last pair)
            if (y_wypt_rot<0 || empty_wypt) && (current_ref_wypt < length(map.ref_traj.base_points.x)-1)
                while current_ref_wypt < length(map.ref_traj.base_points.x)-1
                    current_ref_wypt = min(length(map.ref_traj.base_points.x)-1,current_ref_wypt+1);
                    [x_wypt,y_wypt,min_dist] = obj.intersection_wypt(map,current_ref_wypt,intersector);
-                   if ~isempty(y_wypt)
-                      break; 
+                   empty_wypt = isempty(y_wypt);
+                   if ~empty_wypt
+                       % If wypt is not empty, rotate-translate it
+                       [~,y_wypt_rot] = c2u(x_wypt,y_wypt,obj.position.x,obj.position.y,obj.MPC_vals.M);
+                       if y_wypt_rot>=0
+                           % If wypt is ahead of robot, break from while
+                           % loop
+                           break;
+                       end
                    end
                end
            end
            
            % If y_wypt still empty, then that means we've reach end of traj
            % Use last waypoint base
-           if isempty(y_wypt)
+           if empty_wypt || y_wypt_rot<0
                obj.MPC_vals.wypt.x = map.ref_traj.base_points.x(end);
                obj.MPC_vals.wypt.y = map.ref_traj.base_points.y(end);
                return;
@@ -305,6 +328,10 @@ classdef AMR < handle
            end
            point.x = x_wypt;
            point.y = y_wypt;
+           if length(map.traffic)==0
+               obj.safety.next_section=1;
+           end
+           
            if ~obj.safety.next_section
                % Only going into here if next section wasn't deemed safe
                
@@ -429,10 +456,11 @@ classdef AMR < handle
            
            % Create polygons FOV, map traversable area, and visible area
            fov = polyshape(obj.perception.FOV.x,obj.perception.FOV.y);
-           map_poly = polyshape(map.total_region.xs,map.total_region.ys);
+%            map_poly = polyshape(map.total_region.xs,map.total_region.ys);
+           ROI_poly = obj.perception.ROI;
            visible = polyshape(obj.perception.visible_area.x,obj.perception.visible_area.y);
-           % Find intersection of FOV circle with traversable map
-           fovINTERSECTmap = intersect(fov,map_poly);
+           % Find intersection of FOV circle with current section ROI
+           fovINTERSECTmap = intersect(fov,ROI_poly);
            % Find difference of this intersection with visible area
            ku = subtract(fovINTERSECTmap,visible);
            obj.perception.KU.x = ku.Vertices(:,1);
@@ -472,6 +500,7 @@ classdef AMR < handle
        end
        function logic_step(obj,map,params)
           persistent last_outer_control;
+          persistent last_dc;
           obj.set_MPC_weights(map,params);
           obj.get_MPC_vals(map);
           obj.get_KU2(map);
@@ -479,21 +508,25 @@ classdef AMR < handle
           if  isempty(last_outer_control) || obj.start
               obj.lidar.measure(obj,map);
               obj.get_wypt(map);
-             obj.outer_control();
-             last_outer_control = obj.time;
+              obj.outer_control();
+              if obj.dc.collect_on
+                  obj.dc.record(obj);
+              end
+              last_outer_control = obj.time;
           elseif ((obj.time-last_outer_control) >= 1/obj.control_Hz.outer)
               obj.lidar.measure(obj,map);
               obj.get_wypt(map);
               obj.outer_control();
+              if obj.dc.collect_on
+                  obj.dc.record(obj);
+              end
               last_outer_control = obj.time;
           end
           obj.inner_control();
           obj.motion_step();
-          
-%           obj.get_wypt(map); % To plot correctly
-          if obj.dc.collect_on
-             obj.dc.record(obj); 
-          end
+%           if obj.dc.collect_on
+%              obj.dc.record(obj); 
+%           end
           if obj.dc.collect_stats
              obj.dc.record_stats(obj,map); 
           end

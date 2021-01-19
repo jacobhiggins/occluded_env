@@ -85,6 +85,7 @@ classdef UAV < AMR
             right_m = cot(obj.MPC_vals.right_constraint.theta);
             right_x = obj.MPC_vals.right_constraint.x;
             right_y = obj.MPC_vals.right_constraint.y;
+            right_sign = obj.MPC_vals.right_constraint.sign;
             top = obj.MPC_vals.top_constraint;
             [xrc,yrc] = c2u(obj.MPC_vals.occluded_corner.x,...
                    obj.MPC_vals.occluded_corner.y,...
@@ -96,7 +97,7 @@ classdef UAV < AMR
             phi_r = atan( (y-yrc-y_offset)/(x-xrc) )/(y-yrc-y_offset);
             
             obj.acado_vals.MPC_input.u = zeros(obj.acado_vals.CH,obj.acado_vals.input_num);
-            obj.acado_vals.MPC_input.x0 = [x,y,vx,vy,phi_r,left_m,left_x,left_y,right_m,right_x,right_y,top,corner_x,corner_y,y_offset,0];
+            obj.acado_vals.MPC_input.x0 = [x,y,vx,vy,phi_r,left_m,left_x,left_y,right_m,right_x,right_y,right_sign,top,corner_x,corner_y,y_offset,0];
             obj.acado_vals.MPC_input.x = repmat(obj.acado_vals.MPC_input.x0,obj.acado_vals.CH+1,1);
             obj.acado_vals.MPC_input.y = repmat([xg,yg,0,0,0,0,0,0],obj.acado_vals.CH,1);
             obj.acado_vals.MPC_input.yN = [xg yg];
@@ -133,7 +134,7 @@ classdef UAV < AMR
 %            if obj.position.section==2
 %               obj.MPC_vals.safe = true; 
 %            end
-           if obj.MPC_vals.right_corner.active && obj.position.section==1
+           if obj.MPC_vals.right_corner.active && ~(obj.position.section==length(map.regions))
                obj.MPC_vals.weights.x = params.weights.x;
                obj.MPC_vals.weights.y = params.weights.y;
                obj.MPC_vals.weights.vx = params.weights.vx;
@@ -143,13 +144,17 @@ classdef UAV < AMR
                obj.MPC_vals.weights.cmd_y = params.weights.cmd_y;
 %                obj.MPC_vals.max_vel = params.max_vel;
 %                obj.MPC_vals.corner_offset = params.corner_offset;
-               if obj.safety.next_section || map.traffic_direction==0
-                   obj.MPC_vals.corner_offset = 1;
-                   obj.MPC_vals.weights.perc_r = 0.001;
-               else
-                   obj.MPC_vals.corner_offset = 0;
-                   obj.MPC_vals.weights.perc_r = 1000;
-               end
+               % Uncomment below for perception turned on when uncertain
+%                if obj.safety.next_section || map.traffic_direction==0 || isnan(map.traffic_direction)
+%                    obj.MPC_vals.corner_offset = 1;
+%                    obj.MPC_vals.weights.perc_r = 0.001;
+%                else
+%                    obj.MPC_vals.corner_offset = 0;
+%                    obj.MPC_vals.weights.perc_r = 500;
+%                end
+               % Uncomment below to set perception Manually
+               obj.MPC_vals.weights.perc_r = 0.001;
+               obj.MPC_vals.corner_offset = 1;
            else
                obj.MPC_vals.weights.perc_r = 0.01;
                obj.MPC_vals.weights.y_offset = 10; % used to push position of corner "up" in MPC
@@ -184,6 +189,7 @@ classdef UAV < AMR
             obj.position.y = x(end,2) + noise(2);
             obj.vel.x = x(end,3) + noise(3);
             obj.vel.y = x(end,4) + noise(4);
+            obj.position.theta = atan2(obj.vel.y,obj.vel.x);
             obj.acc.x = u(1);
             obj.acc.y = u(2);
             obj.process.state = [obj.position.x;...

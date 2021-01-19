@@ -2,10 +2,10 @@ classdef map_intersection < map
    properties
        hall_dims = struct("w",[3,3],"l",[10,20]);
        direction = 1; % 1 = up, -1 = down
-       traffic_direction = 0; % 1 = up, -1 = down, 0 = both, NaN = no traffic
-       traffic_maxvel = 1.3; % average walking speed
+       traffic_direction = 1; % 1 = up, -1 = down, 0 = both, NaN = no traffic
+       traffic_maxvel = 10; % average walking speed
        traffic_dims = struct("x",10,"y",120);
-       traffic_starting_prob = 0.5;
+       traffic_starting_prob = 0.0;
    end
    methods
        function obj = map_intersection()
@@ -89,11 +89,20 @@ classdef map_intersection < map
                region1.M = [0 1;1 0];
                region1.curl = -1;
            end
-           region1.lims.left = -(obj.hall_dims.w(1));
+           region1.lims.left = -(obj.hall_dims.w(1))/2;
            region1.localframe.wypt_vec = [1,0];
            region1.localframe.wypt_base.x = obj.ref_traj.base_points.x(1);
            region1.localframe.wypt_base.y = obj.ref_traj.base_points.y(1);
            region1.top_constraint = 10;
+           ROI_xs = [obj.hall_dims.l(1)-obj.hall_dims.w(2) obj.hall_dims.l(1)];
+           if obj.traffic_direction==1 || obj.traffic_direction==-1
+               ROI_ys = [obj.hall_dims.l(2)/2-obj.traffic_direction*obj.hall_dims.w(2)/2,-obj.traffic_direction*100];
+               
+           else
+               ROI_ys = [-100,100];
+           end
+           ROI = polyshape(ROI_xs([1 1 2 2 1]),ROI_ys([1 2 2 1 1]));
+           region1.ROI = ROI;
            obj.regions{end+1} = region1;
            % Second hallway
            xlim = [obj.hall_dims.l(1)-obj.hall_dims.w(2) obj.hall_dims.l(1)];
@@ -110,6 +119,7 @@ classdef map_intersection < map
            region2.localframe.wypt_base.y = obj.ref_traj.base_points.y(2);
            region2.curl = obj.direction;
            region2.top_constraint = 10;
+           region2.ROI = ROI;
            obj.regions{end+1} = region2;
            % Define total free space (for KU calculation)
            xlims1 = [0 obj.hall_dims.l(1)-obj.dims.wall_thickness];

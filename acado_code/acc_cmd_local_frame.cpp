@@ -24,6 +24,7 @@ int main()
   DifferentialState right_m;
   DifferentialState right_x;
   DifferentialState right_y;
+  DifferentialState right_sign;
   DifferentialState top;
   DifferentialState rightcorner_x;
   DifferentialState rightcorner_y;
@@ -56,6 +57,7 @@ int main()
   f << dot(right_m) == 0; // Location of right wall, not to hit
   f << dot(right_x) == 0;
   f << dot(right_y) == 0;
+  f << dot(right_sign) == 0;
   f << dot(top) == 0;
   f << dot(rightcorner_x) == 0;
   f << dot(rightcorner_y) == 0;
@@ -86,7 +88,7 @@ int main()
   // ocp.subjectTo( -2 <= vy <= 2 );
   ocp.subjectTo( pow(vx,2) + pow(vy,2) - epsilon<= 2);
   ocp.subjectTo( (x - left_x) - left_m*(y - left_y) - epsilon >= 0 ); // Left constraint
-  ocp.subjectTo( (x - right_x) - right_m*(y - right_y) - epsilon <= 0 ); // Right constraint
+  ocp.subjectTo( right_sign*((x - right_x) - right_m*(y - right_y) - epsilon) <= 0 ); // Right constraint
   ocp.subjectTo( y - top <= 0); // Top constraint
   // ocp.subjectTo( (x - right_x) - 1*pow((x-right_x),2) - epsilon<= 0 ); // NONLINEAR CONSTRAINT, CHANGE BACK
   // ocp.subjectTo( m_left*(y-yc_left) - (x-xc_left) - epsilon <= 0 );

@@ -21,7 +21,8 @@ classdef map < handle
        plts = containers.Map;
        plts_enable = struct("constraints",true,...
            "freespace",true,...
-           "lidar",true);
+           "lidar",true,...
+           "visible_area",true);
        walls = {};
        epsilon = 0.01;
        vid = struct("rec",true,"writer",[]);
@@ -35,6 +36,7 @@ classdef map < handle
        function obj = map()
           obj.dims.dx = 1/obj.dims.resolution;
           obj.dims.wall_thickness = obj.dims.dx;
+          
           if obj.vid.rec
              obj.vid.writer = VideoWriter("vid.mp4","MPEG-4");
              obj.vid.writer.FrameRate = 10;
@@ -52,11 +54,11 @@ classdef map < handle
                 occupied = false;
                 trafficked = false;
                 % Determine grid values that are occupied
-                for i = 1:length(obj.walls)
-                    if inpolygon(x,y,obj.walls{i}.xs,obj.walls{i}.ys)
-                        occupied = true;
-                    end
-                end
+%                 for i = 1:length(obj.walls)
+%                     if inpolygon(x,y,obj.walls{i}.xs,obj.walls{i}.ys)
+%                         occupied = true;
+%                     end
+%                 end
                 % Set occupancy value
                 if occupied
                     setOccupancy(obj.occ_map,[x y],1);
@@ -66,6 +68,21 @@ classdef map < handle
              end
           end
           
+       end
+       function get_complete_ref(obj)
+           % Get points that span the complete reference trajectory
+           xs = [];
+           ys = [];
+           num_points = 200;
+           for i = 1:length(obj.ref_traj.base_points.x)-1
+               vec = [obj.ref_traj.base_points.x(i+1),obj.ref_traj.base_points.y(i+1)] - ...
+                   [obj.ref_traj.base_points.x(i),obj.ref_traj.base_points.y(i)];
+               vec = vec/num_points;
+               xs = [xs ((1:num_points)*vec(1)+obj.ref_traj.base_points.x(i))];
+               ys = [ys ((1:num_points)*vec(2)+obj.ref_traj.base_points.y(i))];
+           end
+           obj.ref_traj.complete_points.x = xs;
+           obj.ref_traj.complete_points.y = ys;
        end
        function init_plot(obj,robot)
           fig_main = figure(1);
@@ -95,14 +112,19 @@ classdef map < handle
                       y = traffic_region.Y(yi,1);
                       ys = traffic_region.dely*[-1,1] + y;
                       c = 1-traffic_region.occ.current(yi,xi);
-                      plt_patches{xi,yi} = patch(xs([1 2 2 1]),ys([1 1 2 2]),c*ones(1,3),"EdgeColor","none");
+                      plt_patches{xi,yi} = patch(xs([1 2 2 1]),ys([1 1 2 2]),c*ones(1,3),...
+                          "EdgeColor","none",...
+                          "DisplayName","Traffic Occupancy");
                   end
               end
               obj.plts("plt_patches") = plt_patches;
           end
           
           %Plot FOV
-          plt_FOV_area = plot(robot.perception.FOV.x,robot.perception.FOV.y,"g--");
+          plt_FOV_area = plot(robot.perception.FOV.x,robot.perception.FOV.y,"--",...
+              "LineWidth",2,...
+              "Color",[1.0,0.5,0.0],...
+              "DisplayName","Field of View");
           obj.plts("plt_FOV_area") = plt_FOV_area;
 
           % Plot lidar points
@@ -116,8 +138,10 @@ classdef map < handle
           
           % Plot visible area
           blue = [173, 216, 230]/255;
-          plt_perc_area = fill(robot.perception.visible_area.x,robot.perception.visible_area.y,blue,"FaceAlpha",0.3);
-          obj.plts("plt_perc_area") = plt_perc_area;
+          if obj.plts_enable.visible_area
+              plt_perc_area = fill(robot.perception.visible_area.x,robot.perception.visible_area.y,blue,"FaceAlpha",0.3);
+              obj.plts("plt_perc_area") = plt_perc_area;
+          end
           
           % Plot occluded area
           red = [255 204 204]/255;
@@ -132,7 +156,9 @@ classdef map < handle
           end
           
           % Plot reference trajectory
-          plt_ref_traj = plot(obj.ref_traj.base_points.x,obj.ref_traj.base_points.y,'r--');
+          plt_ref_traj = plot(obj.ref_traj.base_points.x,obj.ref_traj.base_points.y,'r--',...
+              "LineWidth",2,...
+              "DisplayName","Reference Trajectory");
           obj.plts("plt_ref_traj") = plt_ref_traj;
           
           % Plot free space
@@ -146,7 +172,9 @@ classdef map < handle
           end
           
           % Plot waypoint
-          plt_wypt = plot(robot.MPC_vals.wypt.x,robot.MPC_vals.wypt.y,"mx","MarkerSize",10);
+          plt_wypt = plot(robot.MPC_vals.wypt.x,robot.MPC_vals.wypt.y,"mx",...
+              "MarkerSize",10,...
+              "DisplayName","Waypoint");
           obj.plts("plt_wypt") = plt_wypt;
           
           % Plot projected motion
@@ -154,12 +182,13 @@ classdef map < handle
           robot.acado_vals.projected_motion.y = robot.position.y;
           plt_proj_mot = plot(robot.acado_vals.projected_motion.x,robot.acado_vals.projected_motion.y,...
               "LineWidth",2,...
-              "Color","magenta");
+              "Color","magenta",...
+              "DisplayName","Projected Motion");
           obj.plts("plt_proj_mot") = plt_proj_mot;
           
           % Plot actual trajectory
           plt_actual_mot = plot(robot.dc.positions.x,robot.dc.positions.y,...
-              "b--",...
+              "b:",...
               "LineWidth",2);
           obj.plts("plt_actual_mot") = plt_actual_mot;
           
@@ -186,10 +215,23 @@ classdef map < handle
           plt_heading = quiver(robot.position.x,...
               robot.position.y,...
               obj.heading_magnitude*cos(robot.position.theta),...
-              obj.heading_magnitude*sin(robot.position.theta));
-          plt_robot = plot(robot.position.x,robot.position.y,'bo');
+              obj.heading_magnitude*sin(robot.position.theta),...
+              "Color",[0.9,0.04,0.04],...
+              "LineWidth",2,...
+              "DisplayName","Heading");
+          plt_robot = plot(robot.position.x,robot.position.y,'bo',...
+              "DisplayName","Robot");
           obj.plts("plt_heading") = plt_heading;
           obj.plts("plt_robot") = plt_robot;
+          
+          % Include legend
+          legend([plt_robot,...
+              plt_heading,...
+              plt_FOV_area,...
+              plt_ref_traj,...
+              plt_proj_mot],...
+              "Location","eastoutside");
+          
 %           xlim(obj.dims.xlim);
 %           ylim(obj.dims.ylim);
           if obj.vid.rec
@@ -197,7 +239,6 @@ classdef map < handle
               writeVideo(obj.vid.writer,frame);
           end
        end
-       
        function init_aux(obj,robot)
            figure(2);
            hold on;
@@ -232,7 +273,6 @@ classdef map < handle
            obj.plts("plt_KUs") = plt_KUs;
            figure(1);
        end
-       
        function update_plot(obj,robot)
            persistent last_update_time;
            if isempty(last_update_time) || robot.time < 0.1
@@ -275,9 +315,11 @@ classdef map < handle
            plt_FOV_area.YData = robot.perception.FOV.y;
            
            % Update visible area
-           plt_perc_area = obj.plts("plt_perc_area");
-           plt_perc_area.XData = robot.perception.visible_area.x;
-           plt_perc_area.YData = robot.perception.visible_area.y;
+           if obj.plts_enable.visible_area
+               plt_perc_area = obj.plts("plt_perc_area");
+               plt_perc_area.XData = robot.perception.visible_area.x;
+               plt_perc_area.YData = robot.perception.visible_area.y;
+           end
            
            % Update occluded points + KU area
 %            plt_occluded_area = obj.plts("plt_occluded_area");
@@ -370,21 +412,27 @@ classdef map < handle
                return;
            end
            last_update_time = robot.time;
-           traffic_region = obj.traffic{1};
-           for xi = 1:size(traffic_region.X,2)
-               x = traffic_region.X(1,xi);
-               for yi = 1:size(traffic_region.Y,1)
-                   y = traffic_region.Y(yi,1);
-                   if InPolygon(x,y,robot.perception.visible_area.x,robot.perception.visible_area.y)
-                       obj.traffic{1}.occ.current(yi,xi) = 0.0;
+           for i = 1:length(obj.traffic)
+               % For each traffic region
+               traffic_region = obj.traffic{i};
+               for xi = 1:size(traffic_region.X,2)
+                   % For each x value
+                   x = traffic_region.X(1,xi);
+                   for yi = 1:size(traffic_region.Y,1)
+                       % For each y value
+                       y = traffic_region.Y(yi,1);
+                       if InPolygon(x,y,robot.perception.visible_area.x,robot.perception.visible_area.y)
+                           % If the x-y coordinate is in the visible
+                           % region, set occupancy to zero
+                           obj.traffic{1}.occ.current(yi,xi) = 0.0;
+                       end
                    end
                end
+               obj.traffic{i}.occ.future = obj.traffic{i}.occ.current;
+               obj.get_future_occ_map(robot,obj.traffic{i});
            end
-           obj.traffic{1}.occ.future = obj.traffic{1}.occ.current;
-           obj.get_future_occ_map(robot);
        end
-       function get_future_occ_map(obj,robot)
-           traffic_region = obj.traffic{1};
+       function get_future_occ_map(obj,robot,traffic_region)
            T = obj.get_future_time(robot);
            old_future_occ = traffic_region.occ.future;
            new_future_occ = traffic_region.occ.future;
@@ -414,21 +462,24 @@ classdef map < handle
        end
        function prob = get_grid_occupancy(obj,point)
            % Get occupancy value of a single grid square
-           x_lim = obj.traffic{1}.lims.x;
-           y_lim = obj.traffic{1}.lims.y;
-           if ~InPolygon(point.x,point.y,x_lim([1 2 2 1 1]),y_lim([1 1 2 2 1]))
-               % If point isn't in trafficked, section, return 0.0 (no
-               % occupancy)
-               prob = 0.0;
-               return;  
+           prob = 0.0;
+           for i = 1:length(obj.traffic)
+               x_lim = obj.traffic{i}.lims.x;
+               y_lim = obj.traffic{i}.lims.y;
+               if ~InPolygon(point.x,point.y,x_lim([1 2 2 1 1]),y_lim([1 1 2 2 1]))
+                   % If point isn't in trafficked, section, return 0.0 (no
+                   % occupancy)
+                   prob = 0.0;
+                   return;
+               end
+               % Find grid point closest to input point
+               traffic_region = obj.traffic{1};
+               dists = (traffic_region.X-point.x).^2 + (traffic_region.Y-point.y).^2;
+               [~,I] = min(dists(:));
+               %            closest.X = traffic_region.X(I);
+               %            closest.Y = traffic_region.Y(I);
+               prob = obj.traffic{1}.occ.future(I);
            end
-           % Find grid point closest to input point
-           traffic_region = obj.traffic{1};
-           dists = (traffic_region.X-point.x).^2 + (traffic_region.Y-point.y).^2;
-           [~,I] = min(dists(:));
-%            closest.X = traffic_region.X(I);
-%            closest.Y = traffic_region.Y(I);
-           prob = obj.traffic{1}.occ.future(I);
        end
        function close_map(obj)
           close(obj.vid.writer);
