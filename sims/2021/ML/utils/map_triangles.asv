@@ -1,0 +1,164 @@
+classdef map_triangles < map
+    properties
+        s_outer = 1; % outer separation distance
+        s_inner = 2; % inner separation distance
+        base = 8.66; % base length of triangle
+        height = 5; % height length of triangle
+    end
+    methods
+        function obj = map_triangles()
+            obj = obj@map();
+            obj.dims.width = 2*obj.s_outer + obj.base + obj.s_inner;
+            obj.dims.height = 2*obj.s_outer + obj.height;
+            obj.dims.resolution = 10;
+            obj.dims.dx = 1/obj.dims.resolution;
+            obj.dims.wall_thickness = obj.dims.dx;
+            
+            % Robot suggest pose to start
+            obj.robot_suggest.pose_start.x = obj.s_outer/2;
+            obj.robot_suggest.pose_start.y = obj.s_outer/2;
+            
+            % Left triangle
+            wall = struct("xs",[],"ys",[]);
+            xs = [0,0,obj.base] + obj.s_outer;
+            ys = [0,obj.height,0] + obj.s_outer;
+            wall.xs = xs([1 2 3 1]);
+            wall.ys = ys([1 2 3 1]);
+            obj.walls{end+1} = wall;
+            
+            % Right triangle
+            xs = [0,obj.base,obj.base]+obj.s_outer+obj.s_inner;
+            ys = [obj.height,obj.height,0]+obj.s_outer;
+            wall.xs = xs([1 2 3 1]);
+            wall.ys = ys([1 2 3 1]);
+            obj.walls{end+1} = wall;
+            
+            % Limits, for plotting
+            obj.dims.xlim = [0 obj.dims.width];
+            obj.dims.ylim = [0 obj.dims.height];
+            
+            % Define reference trajectory
+            delta = 0.0; % Should delete later, this is a hard-coded band-aid for non-45 degree triangles
+            obj.ref_traj.base_points.x = [obj.s_outer/2-delta,...
+                obj.s_outer/2-delta,...
+                obj.s_outer/2+obj.s_outer+obj.base+obj.s_inner+delta,...
+                obj.s_outer/2+obj.s_outer+obj.base+obj.s_inner+delta];
+            obj.ref_traj.base_points.y = [obj.s_outer/2,...
+                obj.s_outer+obj.s_outer+obj.height,...
+                0,...
+                obj.dims.height/2];
+            obj.get_complete_ref();
+            
+            % Define regions for MPC
+            % Let region
+            region1.lims.x = [0,...
+                0,...
+                obj.s_outer,...
+                obj.s_outer,...
+                0];
+            region1.lims.y = [0,...
+                obj.dims.height,...
+                obj.s_outer+obj.height,...
+                0,...
+                0];
+            region1.width = obj.s_outer/2;
+            region1.motional_corner = [obj.s_outer,obj.s_outer+obj.height];
+            region1.occluded_corner = region1.motional_corner;
+            region1.M = eye(2);
+            region1.curl = 1;
+            region1.lims.left = -obj.s_outer/2;
+            region1.localframe.wypt_vec = [0 1];
+            region1.localframe.wypt_base.x = obj.ref_traj.base_points.x(1);
+            region1.localframe.wypt_base.y = obj.ref_traj.base_points.y(1);
+            region1.top_constraint = 10;
+            ROI_xs = [obj.s_outer,...
+                obj.s_outer+obj.base,...
+                obj.s_outer+obj.base+obj.s_inner,...
+                obj.s_outer+obj.s_inner,...
+                obj.s_outer+obj.s_inner,...
+                obj.s_outer];
+            ROI_ys = [obj.s_outer+obj.];
+            region1.ROI = polyshape(ROI_xs,ROI_ys);
+            obj.regions{end+1} = region1;
+            % Middle region
+            region2.lims.x = ROI_xs;
+            region2.lims.y = ROI_ys;
+            region2.width = obj.s_inner*obj.base/sqrt(obj.base^2+obj.height^2);
+            region2.motional_corner = [obj.s_outer+obj.base+obj.s_inner,...
+                obj.s_outer];
+            region2.occluded_corner = region2.motional_corner;
+            theta = atan2(obj.base,obj.height);
+            M = [cos(theta) -sin(theta);sin(theta) cos(theta)]*[1 0;0 -1];
+            region2.M = M;
+            region2.curl = -1;
+            region2.lims.left = -obj.s_inner*cos(theta)/2;
+            region2.localframe.wypt_vec = [cos(theta) -sin(theta)];
+            region2.localframe.wypt_base.x = obj.ref_traj.base_points.x(2);
+            region2.localframe.wypt_base.y = obj.ref_traj.base_points.y(2);
+            region2.top_constraint = 10;
+            ROI_xs = [obj.s_inner+obj.base+obj.s_outer,...
+                obj.dims.width,...
+                obj.dims.width,...
+                obj.s_inner+obj.base+obj.s_outer,...
+                obj.s_inner+obj.base+obj.s_outer];
+            ROI_ys = [obj.s_outer,...
+                0,...
+                obj.dims.height,...
+                obj.dims.height,...
+                obj.s_outer];
+            region2.ROI = polyshape(ROI_xs,ROI_ys);
+            obj.regions{end+1} = region2;
+            % Right region
+            region3.lims.x = [obj.s_outer+obj.base+obj.s_inner,...
+                obj.dims.width,...
+                obj.dims.width,...
+                obj.s_outer+obj.base+obj.s_inner,...
+                obj.s_outer+obj.base+obj.s_inner];
+            region3.lims.y = [0,...
+                0,...
+                obj.height,...
+                obj.height,...
+                0];
+            region3.width = obj.s_outer;
+            region3.motional_corner = [obj.s_outer+obj.base+obj.s_inner,obj.s_outer+obj.height];
+            region3.occluded_corner = region3.motional_corner;
+            region3.M = [-1 0;0 1];
+            region3.curl = -1;
+            region3.lims.left = -obj.s_outer/2;
+            region3.localframe.wypt_vec = [0 1];
+            region3.localframe.wypt_base.x = obj.ref_traj.base_points.x(3);
+            region3.localframe.wypt_base.y = obj.ref_traj.base_points.y(3);
+            region3.top_constraint = 10;
+            ROI_xs = [0,...
+                obj.s_outer+obj.s_inner+obj.base,...
+                obj.s_outer+obj.s_inner+obj.base,...
+                0,...
+                0];
+            ROI_ys = [obj.s_outer+obj.height,...
+                obj.s_outer+obj.height,...
+                obj.dims.height,...
+                obj.dims.height,...
+                obj.s_outer+obj.height];
+            region3.ROI = polyshape(ROI_xs,ROI_ys);
+            obj.regions{end+1} = region3;
+            % Define total region
+            xs = [0 obj.dims.width];
+            ys = [0 obj.dims.height];
+            freespace = polyshape(xs([1 2 2 1 1]),ys([1 1 2 2 1]));
+            for i = 1:length(obj.walls)
+                wall_poly = polyshape(obj.walls{i}.xs,obj.walls{i}.ys);
+                freespace = subtract(freespace,wall_poly);
+            end
+            obj.total_region.polygon = freespace;
+            verts = obj.total_region.polygon.Vertices;
+            obj.total_region.xs = verts(:,1);
+            obj.total_region.ys = verts(:,2);
+        end
+        function end_flag_check(obj,robot)
+            if norm([robot.position.x-obj.ref_traj.base_points.x(end),...
+                    robot.position.y-obj.ref_traj.base_points.y(end)])<0.35
+                obj.end_flag = true;
+            end
+        end
+    end
+end
