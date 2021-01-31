@@ -120,6 +120,22 @@ classdef UAV < AMR
             as = obj.acado_vals.MPC_output.u(1,:);
             ax = as(1);
             ay = as(2);
+            slack = (vx^2 + vy^2) - 2;
+            if slack>1e-15 && abs(as(3))<1e-15
+                % If slack variable should be nonzero but ACADO returns a
+                % zero value, then compile and try again
+                compile_acc_localframe;
+                obj.acado_vals.MPC_output = acado_solver_acc_cmd_localframe( obj.acado_vals.MPC_input );
+                as = obj.acado_vals.MPC_output.u(1,:);
+                ax = as(1);
+                ay = as(2);
+                if abs(as(3))<1e-15
+                    % If slack is still nonzero, then wait here for me to
+                    % debug
+                    pause(0.1);
+                end
+            end
+            
             [ax_cmd,ay_cmd] = c2u(ax,ay,0,0,inv(M));
             obj.outer_cmd.vals = [ax_cmd,ay_cmd];
             proj_mot = (M\obj.acado_vals.MPC_output.x(:,1:2)' + [localframe_origin(1)*ones(obj.acado_vals.CH+1,1) localframe_origin(2)*ones(obj.acado_vals.CH+1,1)]')';
@@ -139,11 +155,11 @@ classdef UAV < AMR
                obj.MPC_vals.weights.y = params.weights.y;
                obj.MPC_vals.weights.vx = params.weights.vx;
                obj.MPC_vals.weights.vy = params.weights.vy;
-%                obj.MPC_vals.weights.perc_r = params.weights.perc;
+               obj.MPC_vals.weights.perc_r = params.weights.perc;
                obj.MPC_vals.weights.cmd_x = params.weights.cmd_x;
                obj.MPC_vals.weights.cmd_y = params.weights.cmd_y;
 %                obj.MPC_vals.max_vel = params.max_vel;
-%                obj.MPC_vals.corner_offset = params.corner_offset;
+               obj.MPC_vals.corner_offset = params.corner_offset;
                % Uncomment below for perception turned on when uncertain
 %                if obj.safety.next_section || map.traffic_direction==0 || isnan(map.traffic_direction)
 %                    obj.MPC_vals.corner_offset = 1;
@@ -153,8 +169,8 @@ classdef UAV < AMR
 %                    obj.MPC_vals.weights.perc_r = 500;
 %                end
                % Uncomment below to set perception Manually
-               obj.MPC_vals.weights.perc_r = 0.001;
-               obj.MPC_vals.corner_offset = 1;
+%                obj.MPC_vals.weights.perc_r = 0.001;
+%                obj.MPC_vals.corner_offset = 1;
            else
                obj.MPC_vals.weights.perc_r = 0.01;
                obj.MPC_vals.weights.y_offset = 10; % used to push position of corner "up" in MPC

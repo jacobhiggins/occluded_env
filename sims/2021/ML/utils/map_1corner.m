@@ -67,15 +67,20 @@ classdef map_1corner < map
            ylim = [0 obj.hall_dims.l(1)-obj.hall_dims.w(2)];
            region1.lims.x = xlim([1 1 2 2 1]);
            region1.lims.y = ylim([1 2 2 1 1]);
-           region1.width = obj.hall_dims.w(1) - obj.dims.wall_thickness;
-           region1.corner = [obj.hall_dims.w(1), obj.hall_dims.l(1)-obj.hall_dims.w(2)];
+           region1.width = (obj.hall_dims.w(1) - obj.dims.wall_thickness)/2;
+           region1.motional_corner = [obj.hall_dims.w(1), obj.hall_dims.l(1)-obj.hall_dims.w(2)];
+           region1.occluded_corner = region1.motional_corner;
            region1.M = eye(2);
-           region1.lims.left = -(obj.hall_dims.w(1)-obj.dims.wall_thickness);
+           region1.lims.left = -(obj.hall_dims.w(1)-obj.dims.wall_thickness)/2;
            region1.localframe.wypt_vec = [0,1];
            region1.localframe.wypt_base.x = obj.ref_traj.base_points.x(1);
            region1.localframe.wypt_base.y = obj.ref_traj.base_points.y(1);
            region1.curl = 1; % postive 1 for clockwise motion
            region1.top_constraint = 10; % HARD-CODED, should change in future
+           ROI_xs = [obj.hall_dims.w(1)+100,obj.hall_dims.l(1)];
+           ROI_ys = [obj.hall_dims.l(1)-obj.hall_dims.w(2),obj.hall_dims.l(1)];
+           ROI = polyshape(ROI_xs([1 1 2 2 1]),ROI_ys([1 2 2 1 1]));
+           region1.ROI = ROI;
            if obj.with_obs
 %               region1.lims.upper = obj.hall_dims.l(1)-obj_width_points(1)*obj.hall_dims.w(2);
            end
@@ -88,7 +93,8 @@ classdef map_1corner < map
                region2.lims.x = xlim([1 1 2 2 1]);
                region2.lims.y = ylim([1 2 2 1 1]);
                region2.width = obj.hall_dims.w(2);
-               region2.corner = [xlim(2) ylim(2)-obj_width_points(1)*obj.hall_dims.w(2)];
+               region2.motional_corner = [xlim(2) ylim(2)-obj_width_points(1)*obj.hall_dims.w(2)];
+               region2.occluded_corner = region2.motional_corner;
                region2.localframe.wypt_vec = [1,0];
                region2.localframe.wypt_base.x = obj.ref_traj.base_points.x(2);
                region2.localframe.wypt_base.y = obj.ref_traj.base_points.y(2);
@@ -130,7 +136,8 @@ classdef map_1corner < map
                region2.lims.x = xlim([1 1 2 2 1]);
                region2.lims.y = ylim([1 2 2 1 1]);
                region2.width = obj.hall_dims.w(2);
-               region2.corner = [obj.hall_dims.l(2), obj.hall_dims.l(1)];
+               region2.motional_corner = [obj.hall_dims.l(2), obj.hall_dims.l(1)];
+               region2.occluded_corner = region2.motional_corner + [100,0];
                region2.M = [0 1;1 0];
                region2.lims.left = -obj.hall_dims.w(2);
                region2.localframe.wypt_vec = [1,0];
@@ -138,6 +145,7 @@ classdef map_1corner < map
                region2.localframe.wypt_base.y = obj.ref_traj.base_points.y(2);
                region2.curl = -1; % -1 for counter-clockwise motion
                region2.top_constraint = 10;
+               region2.ROI = ROI;
                obj.regions{2} = region2;
            end
            
@@ -156,7 +164,8 @@ classdef map_1corner < map
        function end_flag_check(obj,robot)
             % true when time to end
             in2ndregion = inpolygon(robot.position.x,robot.position.y,obj.regions{end}.lims.x,obj.regions{end}.lims.y);
-            x_condition = robot.position.x > 0.99*obj.hall_dims.l(2);
+%             x_condition = robot.position.x > 0.99*obj.hall_dims.l(2);
+            x_condition = robot.position.x > obj.hall_dims.w(1);
             if obj.end_flag==false
                 obj.end_flag = in2ndregion && x_condition;
             end

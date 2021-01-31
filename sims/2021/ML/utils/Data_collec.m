@@ -54,18 +54,20 @@ classdef Data_collec < handle
            if robot.perception.KU.area > obj.stats.max_KU
                obj.stats.max_KU = robot.perception.KU.area;
            end
-           try
-               if (robot.position.x > (map.hall_dims.w(1)+map.dims.wall_thickness)) && (obj.stats.time2clear < 0.1)
-                   obj.stats.time2clear = robot.time;
-               end
-           end
-           obj.stats.vx_zero_cross = obj.vels.zero_cross;
            % If the robot can't clear first section in 15 seconds, then its
            % stuck
            if robot.position.section==1 && robot.time>15.0
               obj.stats.stuck = 1;
+              obj.stats.time2clear = robot.time;
               map.end_flag = true;
            end
+           try
+               if map.end_flag && (obj.stats.time2clear < 0.1)
+                   obj.stats.time2clear = robot.time;
+               end
+           end
+           obj.stats.vx_zero_cross = obj.vels.zero_cross;
+           
        end
    end
 end

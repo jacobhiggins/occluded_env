@@ -1,10 +1,10 @@
 function sim_cleaned()
     
-%     map = map_1corner();
+    map = map_1corner();
 %     map = map_halfcircle();
 %     map = map_intersection();
 %     map = map_equalsign();
-    map = map_triangles();
+%     map = map_triangles();
 %     robot = jackal(map);
     robot = example_UAV(map);
     
@@ -19,9 +19,9 @@ function sim_cleaned()
     map.init_plot(robot);
     map.init_aux(robot);
         
-    params.weights.x = 10;
-    params.weights.y = 10;
-    params.weights.perc = 0.001;
+    params.weights.x = 1000;
+    params.weights.y = 1000;
+    params.weights.perc = 1;
     params.weights.vx = 10;
     params.weights.vy = 10;
     params.weights.cmd_x = 10;

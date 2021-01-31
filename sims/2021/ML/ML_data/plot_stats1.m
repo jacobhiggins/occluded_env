@@ -2,6 +2,53 @@
 close all;
 load("stats.mat");
 
+%% Plot cost vs (peceptionweight/xweight and currenthallwidth)
+close all;
+current_hallwidths = table2array(unique(datatable(:,"current_hallwidth")));
+perception_weights = table2array(unique(datatable(:,"perception_weight")));
+x_weights = table2array(unique(datatable(:,"x_weight")));
+y_weights = table2array(unique(datatable(:,"y_weight")));
+% T = array2table(-100*ones(length(current_hallwidths),length(perception_weights)));
+% T.Properties.VariableNames = string(perception_weights);
+% T.Properties.RowNames = string(perception_weights);
+xdata = []; % hallwidth
+ydata = []; % perception weights/y weight
+zdata = []; % cost
+cdata = [];
+cmap = cool(length(y_weights));
+for i = 1:size(datatable,1)
+    row = table2array(datatable(i,:));
+    current_hallwidth = row(1);
+    perception_weight = row(4);
+    x_weight = row(5);
+    y_weight = row(6);
+    corner_offset = row(11);
+    if abs(corner_offset-1)<0.0001
+        continue;
+    end
+    time2clear = row(12);
+    maxKU = row(13);
+    vx_zero = row(14);
+    stuck = row(15);
+    cost_val = cost(time2clear,maxKU,vx_zero,stuck);
+    xdata(end+1) = current_hallwidth;
+    ydata(end+1) = log10(perception_weight/x_weight);
+    zdata(end+1) = cost_val;
+    cdata(end+1,1:3) = cmap(find(y_weight==y_weights),:);
+end
+
+figure(1);
+plt = scatter3(xdata,ydata,zdata,50*ones(size(xdata)),cdata);
+xlabel("current hall width");
+ylabel("perception weight / x weight");
+zlabel("cost");
+set(gca, 'ZScale', 'log')
+colormap(cmap);
+cb = colorbar;
+cb.Ticks = log10(y_weights);
+cb.Limits = [min(log10(y_weights)) max(log10(y_weights))];
+drawnow;
+%%
 % Plot when vx crosses zero twice
 hallwidths = unique([stats.hallwidth]);
 perception_weights = unique([stats.perception_weight]);

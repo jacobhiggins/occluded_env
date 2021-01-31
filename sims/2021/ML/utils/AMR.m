@@ -253,8 +253,12 @@ classdef AMR < handle
            
            % If waypoint is inside next region, then that's okay
            ROI = map.regions{obj.position.section}.ROI;
-           if InPolygon(x_wypt,y_wypt,ROI.Vertices(:,1),ROI.Vertices(:,2))
-               y_wypt_rot = 1; % Do this so code doesn't search for a new wypt
+           if ~empty_wypt
+               % InPolygon can't handle empty wypts (I think). Since its a
+               % compiled function, Matlab actually crashes!
+               if ~isempty(InPolygon(x_wypt,y_wypt,ROI.Vertices(:,1),ROI.Vertices(:,2)))
+                   y_wypt_rot = 1; % Do this so code doesn't search for a new wypt
+               end
            end
            
            % If wypt empty or wypt is behind robot (y_wypt_rot<0), iterate through other wypt base pairs until

@@ -14,8 +14,8 @@ warning('off','MATLAB:polyshape:repairedBySimplify');
 
 %% Run sim
 % sim_UGV();
-sim_cleaned();
-% sim_ML();
+% sim_cleaned();
+sim_ML();
 
 %% Notes
 % 11/25/2020
