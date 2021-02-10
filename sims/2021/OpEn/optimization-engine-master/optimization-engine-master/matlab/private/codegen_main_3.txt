@@ -1,0 +1,16 @@
+        let problem = Problem::new(&bounds, df, f);
+        let mut panoc = PANOCOptimizer::new(problem, &mut cache).with_max_iter(MAX_ITERS);
+
+        let status = panoc.solve(&mut u).unwrap();
+
+        let msg = format!(
+            "{{\n\t\"p\" : {:?},\n\t\"u\" : {:.10?},\n\t\"n\" : {},\n\t\"f\" : {},\n\t\"dt\" : \"{:?}\"\n}}\n\n\n",
+            &p[..],
+            &u[..],
+            status.iterations(),
+            status.norm_fpr().log10(),
+            status.solve_time()
+        );
+        let _result = socket.send_to(msg.as_bytes(), &src_addr);
+    }
+}
